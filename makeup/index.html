@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#f7c6dd" />
+  <title>Magic Makeup Studio</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="game" class="game-shell" aria-label="Magic Makeup Studio">
+    <div id="backdrop" class="backdrop backdrop-rose" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <button id="backButton" class="icon-button" type="button" aria-label="Previous step">←</button>
+      <div class="step-copy">
+        <div id="stepCounter" class="step-counter">1 / 18</div>
+        <h1 id="stepTitle">Foundation</h1>
+        <p id="stepHint">Pick a shade, then gently brush over the face.</p>
+      </div>
+      <button id="fullscreenButton" class="icon-button" type="button" aria-label="Toggle fullscreen">⛶</button>
+    </header>
+
+    <section id="playfield" class="playfield" aria-label="Character makeover area">
+      <div class="halo" aria-hidden="true"></div>
+      <div id="applyHint" class="apply-hint">Choose a style below</div>
+
+      <svg id="character" class="character" viewBox="0 0 800 900" role="img" aria-label="Makeup character">
+        <defs>
+          <linearGradient id="shirtGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffd8ec" />
+            <stop offset="1" stop-color="#d9c5ff" />
+          </linearGradient>
+          <linearGradient id="goldGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#fff4b8" />
+            <stop offset="0.5" stop-color="#ffc85e" />
+            <stop offset="1" stop-color="#e5962e" />
+          </linearGradient>
+          <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="10" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <clipPath id="faceClip"><ellipse cx="400" cy="370" rx="186" ry="226" /></clipPath>
+        </defs>
+
+        <g id="bodyLayer">
+          <path d="M235 900 Q250 690 400 682 Q550 690 565 900Z" fill="url(#shirtGradient)" />
+          <path d="M334 640 Q400 710 466 640 L470 760 Q400 802 330 760Z" fill="#efb694" />
+        </g>
+
+        <g id="hairBackLayer">
+          <path id="hairBack" d="M196 372 Q190 132 400 110 Q615 127 604 374 L623 760 Q555 820 500 765 Q455 810 400 770 Q340 812 296 765 Q245 820 178 760Z" fill="#7f4f35" />
+        </g>
+
+        <g id="earsLayer" fill="#f3bea1">
+          <ellipse cx="211" cy="392" rx="34" ry="57" />
+          <ellipse cx="589" cy="392" rx="34" ry="57" />
+        </g>
+
+        <ellipse id="faceBase" cx="400" cy="370" rx="186" ry="226" fill="#f6c7aa" />
+        <ellipse id="foundationTint" cx="400" cy="370" rx="186" ry="226" fill="#e8b08d" opacity="0" clip-path="url(#faceClip)" />
+
+        <g id="contours" opacity="0" clip-path="url(#faceClip)">
+          <ellipse cx="246" cy="440" rx="58" ry="110" fill="#b87568" opacity="0.22" />
+          <ellipse cx="554" cy="440" rx="58" ry="110" fill="#b87568" opacity="0.22" />
+        </g>
+
+        <g id="blushGroup" opacity="0" filter="url(#softGlow)">
+          <ellipse id="leftBlush" cx="286" cy="455" rx="58" ry="34" fill="#ef7d9c" />
+          <ellipse id="rightBlush" cx="514" cy="455" rx="58" ry="34" fill="#ef7d9c" />
+        </g>
+
+        <g id="highlightGroup" opacity="0" fill="#fff7dd">
+          <ellipse cx="286" cy="414" rx="30" ry="13" transform="rotate(-12 286 414)" />
+          <ellipse cx="514" cy="414" rx="30" ry="13" transform="rotate(12 514 414)" />
+          <path d="M395 372 Q406 402 395 431 Q413 416 417 386 Q409 365 395 372Z" />
+        </g>
+
+        <g id="eyeShadowGroup" opacity="0">
+          <ellipse id="leftShadow" cx="323" cy="326" rx="76" ry="41" fill="#c987e6" />
+          <ellipse id="rightShadow" cx="477" cy="326" rx="76" ry="41" fill="#c987e6" />
+        </g>
+
+        <g id="browsGroup" fill="none" stroke="#704532" stroke-width="13" stroke-linecap="round">
+          <path id="leftBrow" d="M267 294 Q321 262 365 293" />
+          <path id="rightBrow" d="M435 293 Q480 262 533 294" />
+        </g>
+
+        <g id="eyesLayer">
+          <g id="leftEye" class="eye">
+            <ellipse cx="323" cy="350" rx="67" ry="36" fill="#fffdfb" />
+            <circle id="leftIris" cx="323" cy="350" r="24" fill="#72a38c" />
+            <circle id="leftPupil" cx="323" cy="350" r="11" fill="#241c23" />
+            <circle cx="314" cy="341" r="5" fill="#fff" opacity="0.9" />
+          </g>
+          <g id="rightEye" class="eye">
+            <ellipse cx="477" cy="350" rx="67" ry="36" fill="#fffdfb" />
+            <circle id="rightIris" cx="477" cy="350" r="24" fill="#72a38c" />
+            <circle id="rightPupil" cx="477" cy="350" r="11" fill="#241c23" />
+            <circle cx="468" cy="341" r="5" fill="#fff" opacity="0.9" />
+          </g>
+        </g>
+
+        <g id="eyelinerGroup" opacity="0" fill="none" stroke="#33232f" stroke-width="8" stroke-linecap="round">
+          <path id="leftLiner" d="M257 348 Q323 322 386 350 Q397 344 406 335" />
+          <path id="rightLiner" d="M414 350 Q477 322 543 348 Q554 342 563 334" />
+        </g>
+
+        <g id="mascaraGroup" opacity="0" stroke="#30222a" stroke-width="5" stroke-linecap="round">
+          <path d="M272 327 l-12 -18 M289 321 l-7 -22 M308 318 l-2 -24 M528 327 l12 -18 M511 321 l7 -22 M492 318 l2 -24" />
+        </g>
+
+        <g id="frecklesGroup" opacity="0" fill="#b86e55">
+          <circle cx="356" cy="418" r="4" /><circle cx="373" cy="423" r="3" /><circle cx="389" cy="417" r="3.6" />
+          <circle cx="411" cy="417" r="3.6" /><circle cx="427" cy="423" r="3" /><circle cx="444" cy="418" r="4" />
+          <circle cx="340" cy="427" r="2.8" /><circle cx="460" cy="427" r="2.8" />
+        </g>
+
+        <path id="nose" d="M397 356 Q379 427 399 440 Q417 444 426 431" fill="none" stroke="#d99176" stroke-width="7" stroke-linecap="round" opacity="0.55" />
+
+        <g id="lipsGroup">
+          <path id="upperLip" d="M326 510 Q366 475 400 500 Q434 475 474 510 Q435 516 400 514 Q365 516 326 510Z" fill="#c75e70" />
+          <path id="lowerLip" d="M326 510 Q364 522 400 519 Q436 522 474 510 Q449 558 400 562 Q350 558 326 510Z" fill="#d86c7f" />
+          <path id="lipGloss" d="M351 528 Q382 540 429 525" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity="0" />
+        </g>
+
+        <g id="faceGems" opacity="0" filter="url(#softGlow)">
+          <circle cx="252" cy="390" r="11" fill="#82ddff" /><circle cx="273" cy="409" r="7" fill="#ff8ed7" /><circle cx="548" cy="390" r="11" fill="#82ddff" /><circle cx="527" cy="409" r="7" fill="#ff8ed7" />
+          <path d="M400 272 l11 17 20 5-13 15 2 21-20-8-20 8 2-21-13-15 20-5Z" fill="#fff2a8" />
+        </g>
+
+        <g id="hairFrontLayer">
+          <path id="hairFront" d="M220 338 Q199 151 380 118 Q520 81 585 220 Q607 284 574 338 Q544 272 500 231 Q470 278 410 247 Q346 291 268 260 Q247 298 220 338Z" fill="#8d5a3b" />
+        </g>
+
+        <g id="earringsGroup" opacity="0">
+          <g id="earrings-pearl"><circle cx="209" cy="432" r="14" fill="#fff8e8" stroke="#e3c678" stroke-width="5" /><circle cx="591" cy="432" r="14" fill="#fff8e8" stroke="#e3c678" stroke-width="5" /></g>
+          <g id="earrings-heart" opacity="0"><path d="M192 428 C178 412 158 434 209 468 C260 434 240 412 226 428 C218 437 201 437 192 428Z" fill="#ff70ad" transform="translate(-7 0) scale(.48) translate(215 450)" /><path d="M192 428 C178 412 158 434 209 468 C260 434 240 412 226 428 C218 437 201 437 192 428Z" fill="#ff70ad" transform="translate(375 0) scale(.48) translate(215 450)" /></g>
+          <g id="earrings-star" opacity="0"><path d="M209 416 l9 19 21 3-15 15 4 21-19-10-19 10 4-21-15-15 21-3Z" fill="#ffd75f" /><path d="M591 416 l9 19 21 3-15 15 4 21-19-10-19 10 4-21-15-15 21-3Z" fill="#ffd75f" /></g>
+        </g>
+
+        <g id="necklaceGroup" opacity="0">
+          <path id="necklaceChain" d="M316 692 Q400 765 484 692" fill="none" stroke="url(#goldGradient)" stroke-width="8" stroke-linecap="round" />
+          <circle id="necklaceCharmCircle" cx="400" cy="748" r="18" fill="#ffd76d" />
+          <path id="necklaceCharmHeart" d="M400 768 C364 740 365 711 385 713 C397 714 400 726 400 726 C400 726 403 714 415 713 C435 711 436 740 400 768Z" fill="#ff77ad" opacity="0" />
+          <path id="necklaceCharmStar" d="M400 718 l8 18 20 2-15 13 5 20-18-10-18 10 5-20-15-13 20-2Z" fill="#8cdcff" opacity="0" />
+        </g>
+
+        <g id="hairClipGroup" opacity="0">
+          <g id="clip-flower" transform="translate(520 220)"><circle r="16" fill="#ffe06f" /><circle cx="0" cy="-25" r="18" fill="#ff9fca" /><circle cx="24" cy="-8" r="18" fill="#ff9fca" /><circle cx="15" cy="20" r="18" fill="#ff9fca" /><circle cx="-15" cy="20" r="18" fill="#ff9fca" /><circle cx="-24" cy="-8" r="18" fill="#ff9fca" /></g>
+          <g id="clip-bow" transform="translate(520 220)" opacity="0"><path d="M0 0 Q-62 -45 -66 5 Q-61 47 0 16 Q61 47 66 5 Q62 -45 0 0Z" fill="#b996ff" /><circle cx="0" cy="8" r="17" fill="#f8d6ff" /></g>
+          <g id="clip-star" transform="translate(520 220)" opacity="0"><path d="M0 -47 l14 29 33 5-24 23 6 33-29-16-29 16 6-33-24-23 33-5Z" fill="#7fe2ff" /></g>
+        </g>
+
+        <g id="tiaraGroup" opacity="0" transform="translate(400 150)">
+          <path id="tiaraClassic" d="M-118 18 L-85 -30 L-43 5 L0 -62 L43 5 L85 -30 L118 18 Q0 45 -118 18Z" fill="url(#goldGradient)" stroke="#f9eab0" stroke-width="6" />
+          <path id="tiaraCrystal" d="M-118 18 L-75 -37 L-38 5 L0 -73 L38 5 L75 -37 L118 18 Q0 45 -118 18Z" fill="#9fe8ff" stroke="#e9fbff" stroke-width="6" opacity="0" />
+          <path id="tiaraPink" d="M-118 18 L-79 -29 L-40 2 L0 -60 L40 2 L79 -29 L118 18 Q0 45 -118 18Z" fill="#ff9bcf" stroke="#ffe4f3" stroke-width="6" opacity="0" />
+        </g>
+
+        <g id="sparkleLayer" opacity="0" pointer-events="none">
+          <circle class="magic-dot d1" cx="265" cy="230" r="9" fill="#fff" /><circle class="magic-dot d2" cx="540" cy="286" r="7" fill="#fff4a9" /><circle class="magic-dot d3" cx="185" cy="520" r="8" fill="#a9efff" /><circle class="magic-dot d4" cx="610" cy="535" r="10" fill="#ffd1e7" />
+          <path class="magic-star s1" d="M400 205 l7 17 18 7-18 7-7 17-7-17-18-7 18-7Z" fill="#fff" />
+          <path class="magic-star s2" d="M556 438 l6 14 14 6-14 6-6 14-6-14-14-6 14-6Z" fill="#fff" />
+        </g>
+      </svg>
+
+      <div id="brushCursor" class="brush-cursor" aria-hidden="true"></div>
+      <div id="dabLayer" class="dab-layer" aria-hidden="true"></div>
+    </section>
+
+    <section class="controls" aria-label="Makeup choices">
+      <div id="options" class="options" role="list"></div>
+      <div class="action-row">
+        <div class="coverage-wrap" aria-hidden="true">
+          <div class="coverage-label"><span id="coverageText">0%</span> applied</div>
+          <div class="coverage-track"><div id="coverageFill" class="coverage-fill"></div></div>
+        </div>
+        <button id="nextButton" class="next-button" type="button" disabled>Next ✨</button>
+      </div>
+    </section>
+
+    <div id="finishPanel" class="finish-panel" hidden>
+      <div class="finish-card">
+        <div class="finish-stars">✨ 💖 ✨</div>
+        <h2>Beautiful look!</h2>
+        <p>You finished all 18 steps.</p>
+        <button id="replayButton" class="next-button" type="button">Make another look</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="./game.js"></script>
+</body>
+</html>
