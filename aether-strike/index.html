@@ -30,7 +30,7 @@
     @media (prefers-reduced-motion:reduce){#lensfx:after{display:none}}
     @media (min-width:760px){#fire{width:104px;height:104px}.stickBase{width:126px;height:126px}.brand b{font-size:21px}.status{top:88px}.score strong{font-size:26px}}
   </style>
-  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/","./models.js":"./models-v2.js"}}</script>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/","./models.js":"./models-v3-runtime.js"}}</script>
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -39,7 +39,7 @@
   <div id="mission">WAVE <span class="wave" id="wave">01</span> · <span id="objective">CLEAR THE SKY</span></div>
   <div id="bossWrap"><div id="bossName">HARBINGER CARRIER</div><div class="bossTrack"><div id="bossBar"></div></div></div><div id="combo"></div><div id="reticle"><div class="r1"></div><div class="r2"></div></div>
   <div id="controls"><div class="stickZone" id="stickZone"><div class="stickBase"><div class="stickKnob" id="stickKnob"></div></div></div><div class="actionZone"><button class="btn" id="dash">PULSE</button><button class="btn" id="fire">FIRE</button></div></div>
-  <div id="start"><div class="panel"><div class="kicker">Procedural mobile 3D combat demo · PBR FX pass</div><div class="logo">AETHER<br>STRIKE<small>SKYBREAK</small></div><p class="desc">Pilot the Aether-9 interceptor through floating ruins. Break enemy formations, exploit core hits, collect field upgrades and survive the Harbinger carrier every fourth wave.</p><button class="enter" id="enter">LAUNCH INTERCEPTOR</button><div class="hint">Left thumb: move · hold FIRE: plasma cannons · manage weapon heat<br>PULSE: evade + clear nearby fire · collect shield / drive / overclock cores<br>Desktop: WASD / arrows · Space · Shift</div></div></div>
+  <div id="start"><div class="panel"><div class="kicker">AAA hard-surface target pass · img2threejs-inspired</div><div class="logo">AETHER<br>STRIKE<small>SKYBREAK</small></div><p class="desc">Pilot the rebuilt Aether-9 interceptor through floating ruins. Layered armor, mechanical nacelles, hardpoints, vents and distinct enemy silhouettes now target the AAA cyberpunk reference direction.</p><button class="enter" id="enter">LAUNCH INTERCEPTOR</button><div class="hint">Left thumb: move · hold FIRE: plasma cannons · manage weapon heat<br>PULSE: evade + clear nearby fire · collect shield / drive / overclock cores<br>Desktop: WASD / arrows · Space · Shift</div></div></div>
   <div id="gameover"><div class="panel"><div class="kicker">Interceptor lost</div><div class="result" id="finalScore">0<small>FINAL SCORE</small></div><button class="enter" id="restart">RELAUNCH</button></div></div>
   <div id="toast"></div><div id="flash"></div><div id="damage"></div><div id="quality">Adaptive high render</div><script type="module" src="./boot.js"></script>
 </body>
