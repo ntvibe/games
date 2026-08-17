@@ -47,11 +47,11 @@ jobs:
           const combat=await page.evaluate(()=>({shots:window.__pulseAscent.shots,releases:window.__pulseAscent.releaseCount,score:window.__pulseAscent.score,sync:window.__pulseAscent.sync,enemies:window.__pulseAscent.enemies.length,canvas:[document.querySelector('canvas')?.width,document.querySelector('canvas')?.height]}));
           if(combat.shots<1||combat.releases<1)throw new Error(`Lock/release did not fire: ${JSON.stringify(combat)}`);
           await page.screenshot({path:`${out}/02-combat-desktop.png`});
-          await page.evaluate(()=>{const g=window.__pulseAscent;g.audio.listeners.clear();g.onStep(28*16,g.audio.ctx.currentTime);});await page.waitForTimeout(450);
+          await page.evaluate(()=>{const g=window.__pulseAscent;g.audio.listeners.clear();g.enemies.forEach(e=>e.dispose());g.enemies=[];g.particles.life.fill(0);for(let i=2;i<g.particles.positions.length;i+=3)g.particles.positions[i]=9999;g.particles.dirty();g.onStep(28*16,g.audio.ctx.currentTime);});await page.waitForTimeout(450);
           await page.screenshot({path:`${out}/03-boss-intro-desktop.png`});
           await page.waitForTimeout(750);
-          const boss=await page.evaluate(()=>({exists:!!window.__pulseAscent.boss,visible:!document.querySelector('#bossHud').classList.contains('hidden'),parts:window.__pulseAscent.boss?.parts.length||0,phase:window.__pulseAscent.boss?.phase||0,health:window.__pulseAscent.boss?.healthRatio?.()||0,section:document.querySelector('#sectionName').textContent}));
-          if(!boss.exists||!boss.visible||boss.parts!==8||boss.section!=='THE CONVERGENCE')throw new Error(`Boss state invalid: ${JSON.stringify(boss)}`);
+          const boss=await page.evaluate(()=>({exists:!!window.__pulseAscent.boss,visible:!document.querySelector('#bossHud').classList.contains('hidden'),parts:window.__pulseAscent.boss?.parts.length||0,phase:window.__pulseAscent.boss?.phase||0,health:window.__pulseAscent.boss?.healthRatio?.()||0,section:document.querySelector('#sectionName').textContent,enemies:window.__pulseAscent.enemies.length}));
+          if(!boss.exists||!boss.visible||boss.parts!==8||boss.section!=='THE CONVERGENCE'||boss.enemies!==0)throw new Error(`Boss state invalid: ${JSON.stringify(boss)}`);
           await page.screenshot({path:`${out}/04-boss-active-desktop.png`});await desktop.close();
           const mobile=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const mp=await mobile.newPage();await attach(mp,'mobile');
           await mp.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await mp.screenshot({path:`${out}/05-start-mobile.png`});await mp.tap('#startBtn');await mp.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await mp.waitForTimeout(1800);await mp.screenshot({path:`${out}/06-play-mobile.png`,fullPage:true});
