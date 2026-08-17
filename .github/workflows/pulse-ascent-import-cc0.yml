@@ -40,12 +40,18 @@ jobs:
 
           pick() {
             root="$1"; pattern="$2"; out="$3"
-            file="$(find "$root" -type f \( -iname '*.glb' -o -iname '*.gltf' \) | grep -Ei "$pattern" | head -n 1 || true)"
+            file=''
+            while IFS= read -r -d '' candidate; do
+              base="$(basename "$candidate")"
+              if printf '%s' "$base" | grep -Eiq "$pattern"; then
+                file="$candidate"
+                break
+              fi
+            done < <(find "$root" -type f -iname '*.glb' -print0 | sort -z)
             if [ -z "$file" ]; then
-              file="$(find "$root" -type f -iname '*.glb' | head -n 1 || true)"
-            fi
-            if [ -z "$file" ]; then
-              echo "No GLB found for $out" >&2
+              echo "No basename match for $out using /$pattern/" >&2
+              echo 'Available GLBs:' >&2
+              find "$root" -type f -iname '*.glb' -printf '%f\n' | sort >&2
               exit 1
             fi
             cp "$file" "$OUT/$out"
@@ -55,8 +61,8 @@ jobs:
           pick /tmp/pulse-assets/factory 'machine|generator|engine|motor|pump' 'factory-machine.glb'
           pick /tmp/pulse-assets/factory 'pipe|tube|duct' 'factory-pipe.glb'
           pick /tmp/pulse-assets/factory 'conveyor|belt' 'factory-conveyor.glb'
-          pick /tmp/pulse-assets/factory 'tank|silo|container' 'factory-tank.glb'
-          pick /tmp/pulse-assets/blaster 'blaster|rifle|weapon|gun' 'blaster-rifle.glb'
+          pick /tmp/pulse-assets/factory 'tank|silo|container|furnace|boiler|platform|support|stairs|fence' 'factory-tank.glb'
+          pick /tmp/pulse-assets/blaster 'rifle|pistol|gun|blaster|launcher|weapon' 'blaster-rifle.glb'
           pick /tmp/pulse-assets/blaster 'crate|box' 'blaster-crate.glb'
 
           cat > "$OUT/PROVENANCE.md" <<'EOF'
@@ -67,7 +73,7 @@ jobs:
           - Kenney Factory Kit 3.0 — https://kenney.nl/assets/factory-kit — Creative Commons CC0.
           - Kenney Blaster Kit 2.1 — https://www.kenney.nl/assets/blaster-kit — Creative Commons CC0.
 
-          The import workflow copies a small subset and normalizes filenames for stable game references. Original creators retain authorship; CC0 does not require attribution, but provenance is kept intentionally.
+          The import workflow matches source GLB basenames, copies a small runtime subset, and normalizes filenames for stable game references. Original creators retain authorship; CC0 does not require attribution, but provenance is kept intentionally.
           EOF
 
           echo 'Imported model sizes:'
@@ -83,5 +89,5 @@ jobs:
             echo 'No asset changes to commit.'
             exit 0
           fi
-          git commit -m 'Import curated CC0 models for Pulse Ascent'
+          git commit -m 'Refresh curated CC0 models for Pulse Ascent'
           git push origin HEAD:main
