@@ -30,6 +30,20 @@ A mobile-first 3D WebGL racer/showpiece with:
 - keyboard controls for desktop testing
 - no game art downloads; runtime geometry and effects are procedural
 
+### `aether-strike/` — Aether Strike: Skybreak
+
+A high-end mobile-first 3D aerial combat demo with:
+
+- twin-thumb touch controls plus keyboard controls for desktop testing
+- escalating enemy waves, plasma fire, enemy projectiles, combo scoring and a phase-pulse evade
+- procedurally built interceptor, drones, floating rock fields and sci-fi pylons
+- animated shader sky, living storm ocean and GPU dust field
+- ACES tone mapping, soft realtime shadows, emissive PBR materials and UnrealBloom post-processing
+- live render-resolution scaling based on measured frame rate
+- automatic bloom/shadow quality degradation on slower phones
+- synthesized WebAudio feedback and vibration/haptics where supported
+- no downloaded game-art assets and no build step
+
 ## Structure
 
 ```text
@@ -40,7 +54,10 @@ games/
 │   ├── index.html
 │   ├── style.css
 │   └── game.js
-└── neon-rift/
+├── neon-rift/
+│   ├── index.html
+│   └── game.js
+└── aether-strike/
     ├── index.html
     └── game.js
 ```
