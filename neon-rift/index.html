@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#03030a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>NEON RIFT — Gravity Run</title>
+  <style>
+    :root{color-scheme:dark;--cyan:#69f7ff;--violet:#9a74ff;--red:#ff3b77;--ink:#05050c}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020207;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;touch-action:none;overscroll-behavior:none;user-select:none}
+    #game{position:fixed;inset:0;width:100%;height:100%;display:block}
+    #hud{position:fixed;inset:0;pointer-events:none;color:#fff;padding:calc(env(safe-area-inset-top) + 14px) calc(env(safe-area-inset-right) + 14px) calc(env(safe-area-inset-bottom) + 14px) calc(env(safe-area-inset-left) + 14px);display:flex;flex-direction:column;justify-content:space-between;text-shadow:0 0 14px rgba(90,230,255,.45)}
+    .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .brand{font-size:12px;letter-spacing:.24em;font-weight:900;color:rgba(255,255,255,.72);text-transform:uppercase}.brand b{display:block;margin-top:3px;font-size:20px;letter-spacing:.06em;color:#fff}
+    .score{text-align:right;font-variant-numeric:tabular-nums}.score strong{display:block;font-size:24px;line-height:1}.score span{font-size:10px;letter-spacing:.22em;color:rgba(255,255,255,.62)}
+    .bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
+    .meters{width:min(54vw,250px);display:grid;gap:8px}.meterLine{display:grid;grid-template-columns:64px 1fr 40px;align-items:center;gap:8px;font-size:9px;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.68)}.bar{height:5px;background:rgba(255,255,255,.11);border-radius:999px;overflow:hidden;box-shadow:inset 0 0 12px rgba(0,0,0,.6)}.fill{height:100%;width:100%;transform-origin:left center;box-shadow:0 0 10px currentColor}.shield{color:var(--cyan);background:linear-gradient(90deg,#42dfff,#80fff0)}.energy{color:var(--violet);background:linear-gradient(90deg,#734dff,#ff73f7)}
+    #boost{pointer-events:auto;width:78px;height:78px;border-radius:50%;border:1px solid rgba(255,255,255,.38);background:radial-gradient(circle at 38% 30%,rgba(255,255,255,.24),rgba(105,247,255,.08) 35%,rgba(10,12,26,.66) 68%);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#fff;font-weight:900;font-size:11px;letter-spacing:.12em;box-shadow:0 0 28px rgba(85,235,255,.18),inset 0 0 22px rgba(120,245,255,.09);transition:transform .12s ease,box-shadow .12s ease}
+    #boost:active,#boost.active{transform:scale(.92);box-shadow:0 0 42px rgba(97,238,255,.48),inset 0 0 28px rgba(120,245,255,.26)}
+    #start{position:fixed;inset:0;display:grid;place-items:center;padding:26px;background:radial-gradient(circle at 50% 42%,rgba(50,25,110,.25),rgba(0,0,0,.76) 65%);z-index:5;color:#fff;text-align:center;transition:opacity .55s ease,visibility .55s ease}.panel{width:min(560px,100%)}.kicker{font-size:11px;letter-spacing:.34em;font-weight:900;color:var(--cyan);text-transform:uppercase}.logo{font-size:clamp(48px,14vw,92px);line-height:.82;letter-spacing:-.065em;margin:12px 0 16px;font-weight:1000;background:linear-gradient(180deg,#fff 22%,#b8b7ff 60%,#63eaff);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 0 24px rgba(96,230,255,.18))}.logo small{display:block;font-size:.32em;letter-spacing:.24em;margin-top:14px}.desc{max-width:420px;margin:0 auto 22px;color:rgba(255,255,255,.68);font-size:14px;line-height:1.5}.enter{appearance:none;border:0;border-radius:999px;padding:16px 24px;background:linear-gradient(100deg,#63f3ff,#986cff 55%,#ff55bb);font-weight:950;letter-spacing:.14em;color:#080814;box-shadow:0 12px 45px rgba(91,169,255,.3)}.hint{margin-top:15px;font-size:10px;letter-spacing:.13em;color:rgba(255,255,255,.45);text-transform:uppercase}.hidden{opacity:0;visibility:hidden;pointer-events:none}
+    #flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.36),rgba(255,55,120,.18) 30%,transparent 68%);mix-blend-mode:screen}
+    #toast{position:fixed;left:50%;top:24%;translate:-50% -50%;pointer-events:none;color:white;font-size:12px;font-weight:950;letter-spacing:.2em;opacity:0;text-shadow:0 0 22px currentColor;white-space:nowrap}
+    #quality{position:fixed;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:8px;letter-spacing:.16em;color:rgba(255,255,255,.26);writing-mode:vertical-rl;text-transform:uppercase}
+    @media (min-width:800px){#boost{width:88px;height:88px}.brand b{font-size:23px}.score strong{font-size:28px}}
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div class="top">
+      <div class="brand">NTVIBE // EXPERIMENT <b>NEON RIFT</b></div>
+      <div class="score"><strong id="score">000000</strong><span>DISTANCE SCORE</span></div>
+    </div>
+    <div class="bottom">
+      <div class="meters">
+        <div class="meterLine"><span>SHIELD</span><div class="bar"><div id="shieldBar" class="fill shield"></div></div><span id="shieldText">100%</span></div>
+        <div class="meterLine"><span>ENERGY</span><div class="bar"><div id="energyBar" class="fill energy"></div></div><span id="energyText">100%</span></div>
+      </div>
+      <button id="boost" aria-label="Boost">BOOST</button>
+    </div>
+  </div>
+  <div id="start">
+    <div class="panel">
+      <div class="kicker">Mobile WebGL showpiece</div>
+      <div class="logo">NEON<br>RIFT<small>GRAVITY RUN</small></div>
+      <p class="desc">Ride a collapsing light tunnel, dodge unstable matter and harvest energy shards. Rendering quality adapts live to your phone.</p>
+      <button class="enter" id="enter">ENTER THE RIFT</button>
+      <div class="hint">Drag anywhere to steer · hold BOOST for overdrive · headphones recommended</div>
+    </div>
+  </div>
+  <div id="flash"></div>
+  <div id="toast"></div>
+  <div id="quality">Adaptive render</div>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
