@@ -1,6 +1,6 @@
 # games
 
-A collection of small browser games. Each game lives in its own top-level folder so it can be developed and deployed independently.
+A collection of browser games. Each game lives in its own top-level folder so it can be developed and deployed independently.
 
 ## Current games
 
@@ -16,7 +16,19 @@ An ad-free full-screen makeup and jewelry game prototype with:
 - portrait and landscape responsive layouts
 - zero runtime dependencies and no build step
 
-Open `makeup/index.html` directly, or serve the repository as a static site.
+### `neon-rift/` — Neon Rift: Gravity Run
+
+A mobile-first 3D WebGL racer/showpiece with:
+
+- full-screen touch steering and hold-to-boost controls
+- adaptive render resolution based on live frame rate
+- ACES tone mapping, bloom, vignette, grain and chromatic lens effects
+- procedural infinite tunnel geometry and instanced wall panels
+- GPU particle streak field and animated singularity focal point
+- obstacles, collectibles, shields, energy, score and haptics
+- synthesized WebAudio engine and interaction sounds
+- keyboard controls for desktop testing
+- no game art downloads; runtime geometry and effects are procedural
 
 ## Structure
 
@@ -24,10 +36,13 @@ Open `makeup/index.html` directly, or serve the repository as a static site.
 games/
 ├── index.html
 ├── README.md
-└── makeup/
+├── makeup/
+│   ├── index.html
+│   ├── style.css
+│   └── game.js
+└── neon-rift/
     ├── index.html
-    ├── style.css
     └── game.js
 ```
 
-Future games should be added as sibling folders such as `hospital/`, `dressup/`, or `animals/`.
+Open the repository root as a static site and choose a game, or open a game's `index.html` directly through a local/static web server.
