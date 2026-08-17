@@ -1,0 +1,68 @@
+name: Pulse Ascent visual gauntlet
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-visual-check.yml'
+  workflow_dispatch:
+jobs:
+  browser-gauntlet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 > /tmp/pulse-server.log 2>&1 &
+          echo $! > /tmp/pulse-server.pid
+          sleep 2
+      - name: Run browser gauntlet
+        run: |
+          cat > /tmp/pulse-gauntlet.cjs <<'NODE'
+          const {chromium}=require(process.cwd()+'/node_modules/playwright');
+          const fs=require('fs');
+          const out='pulse-ascent-gauntlet';fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          async function attach(page,label){
+            page.on('pageerror',e=>errors.push(`${label} pageerror: ${e.message}`));
+            page.on('console',m=>{if(m.type()==='error')errors.push(`${label} console: ${m.text()}`)});
+          }
+          const desktop=await browser.newContext({viewport:{width:1440,height:900}});const page=await desktop.newPage();await attach(page,'desktop');
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.screenshot({path:`${out}/01-start-desktop.png`});
+          await page.click('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await page.waitForTimeout(2600);
+          const point=await page.evaluate(()=>{const g=window.__pulseAscent,t=g.enemies.find(e=>!e.dead&&e.type!=='danger');if(!t)return null;const p=t.group.position.clone().project(g.camera);return{x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};});
+          if(!point)throw new Error('No target available for lock test');
+          await page.mouse.move(point.x,point.y);await page.mouse.down();await page.waitForTimeout(180);await page.mouse.up();await page.waitForTimeout(900);
+          const combat=await page.evaluate(()=>({shots:window.__pulseAscent.shots,releases:window.__pulseAscent.releaseCount,score:window.__pulseAscent.score,sync:window.__pulseAscent.sync,enemies:window.__pulseAscent.enemies.length,canvas:[document.querySelector('canvas')?.width,document.querySelector('canvas')?.height]}));
+          if(combat.shots<1||combat.releases<1)throw new Error(`Lock/release did not fire: ${JSON.stringify(combat)}`);
+          await page.screenshot({path:`${out}/02-combat-desktop.png`});
+          await page.evaluate(()=>window.__pulseAscent.onStep(28*16,window.__pulseAscent.audio.ctx.currentTime));await page.waitForTimeout(900);
+          const boss=await page.evaluate(()=>({exists:!!window.__pulseAscent.boss,visible:!document.querySelector('#bossHud').classList.contains('hidden'),parts:window.__pulseAscent.boss?.parts.length||0}));
+          if(!boss.exists||!boss.visible||boss.parts!==8)throw new Error(`Boss state invalid: ${JSON.stringify(boss)}`);
+          await page.screenshot({path:`${out}/03-boss-desktop.png`});await desktop.close();
+          const mobile=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const mp=await mobile.newPage();await attach(mp,'mobile');
+          await mp.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await mp.screenshot({path:`${out}/04-start-mobile.png`});await mp.tap('#startBtn');await mp.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await mp.waitForTimeout(1800);await mp.screenshot({path:`${out}/05-play-mobile.png`,fullPage:true});
+          const mobileState=await mp.evaluate(()=>({overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight],hud:document.querySelector('#hud').getBoundingClientRect().toJSON(),sync:document.querySelector('#sync').textContent}));
+          if(mobileState.overflow[0]>1||mobileState.overflow[1]>1)throw new Error(`Mobile overflow: ${JSON.stringify(mobileState)}`);await mobile.close();await browser.close();
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({combat,boss,mobileState,errors},null,2));
+          if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({combat,boss,mobileState},null,2));
+          NODE
+          node /tmp/pulse-gauntlet.cjs
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-gauntlet
+          path: pulse-ascent-gauntlet/
+          if-no-files-found: warn
+          retention-days: 7
