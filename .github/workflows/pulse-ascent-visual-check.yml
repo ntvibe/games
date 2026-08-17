@@ -26,9 +26,11 @@ jobs:
           sleep 2
       - name: Run browser gauntlet
         run: |
-          cat > /tmp/pulse-gauntlet.cjs <<'NODE'
-          const {chromium}=require(process.cwd()+'/node_modules/playwright');
-          const fs=require('fs');
+          cat > /tmp/pulse-gauntlet.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
           const out='pulse-ascent-gauntlet';fs.mkdirSync(out,{recursive:true});
           const errors=[];
           const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
@@ -57,7 +59,7 @@ jobs:
           if(errors.length)throw new Error(errors.join('\n'));
           console.log(JSON.stringify({combat,boss,mobileState},null,2));
           NODE
-          node /tmp/pulse-gauntlet.cjs
+          node /tmp/pulse-gauntlet.mjs
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4
