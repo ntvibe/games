@@ -1,0 +1,24 @@
+name: Pulse Ascent smoke check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-check.yml'
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check module syntax
+        run: |
+          for f in pulse-ascent/*.js; do node --check --input-type=module < "$f"; done
+      - name: Check required files
+        run: |
+          test -s pulse-ascent/index.html
+          test -s pulse-ascent/style.css
+          test -s pulse-ascent/game.js
+          grep -q "PULSE//ASCENT" pulse-ascent/index.html
