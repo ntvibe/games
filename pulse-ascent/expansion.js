@@ -88,9 +88,9 @@ class RuptureSystem{
     this.makeProceduralField();
   }
   makeProceduralField(){
-    for(let i=0;i<9;i++){
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(5.5+i*1.75,.022,3,72),new THREE.MeshBasicMaterial({color:i%2?0xff43cf:0x42eaff,transparent:true,opacity:.08,blending:THREE.AdditiveBlending,depthWrite:false}));
-      ring.rotation.set(rand(-1.2,1.2),rand(-1.2,1.2),rand(0,TAU));ring.position.z=-14-i*4.2;this.group.add(ring);this.rings.push(ring);
+    for(let i=0;i<8;i++){
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(5.5+i*1.85,.022,3,72),new THREE.MeshBasicMaterial({color:i%2?0xff43cf:0x42eaff,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false}));
+      ring.rotation.set(rand(-1.2,1.2),rand(-1.2,1.2),rand(0,TAU));ring.position.z=-14-i*4.6;this.group.add(ring);this.rings.push(ring);
     }
     const count=900,pos=new Float32Array(count*3),col=new Float32Array(count*3),c=new THREE.Color();
     for(let i=0;i<count;i++){const r=rand(6,31),a=rand(0,TAU),b=rand(-1,1);pos[i*3]=Math.cos(a)*r;pos[i*3+1]=Math.sin(a)*r*b;pos[i*3+2]=rand(-82,4);c.setHSL(i%2?.52:.88,.9,.62);col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;}
@@ -103,16 +103,17 @@ class RuptureSystem{
     const keys=['machine','pipe','conveyor','tank','crate'];
     for(let i=0;i<18;i++){
       const key=keys[i%keys.length],obj=this.assets.clone(key,{tint:i%3===0?0xff4fd6:0x48eaff,size:rand(1.8,4.2),wire:i<12});if(!obj)continue;
-      this.group.add(obj);this.decor.push({obj,railX:(i%2?1:-1)*rand(8,15),railY:rand(-5,5),railZ:-12-i*7.2,angle:(i/18)*TAU+rand(-.2,.2),radius:rand(9,23),freeY:rand(-8,8),spin:rand(-.35,.35)});
+      this.group.add(obj);this.decor.push({obj,railX:(i%2?1:-1)*rand(8,15),railY:rand(-5,5),railZ:-12-i*7.2,angle:(i/18)*TAU+rand(-.2,.2),radius:rand(10,25),freeY:rand(-8,8),spin:rand(-.35,.35)});
     }
     for(const side of [-1,1]){
-      const gun=this.assets.clone('rifle',{tint:side<0?0x52ecff:0xff56d5,size:1.05,wire:true});if(!gun)continue;
-      gun.position.set(side*.58,-.02,-.18);gun.rotation.set(0,side<0?-.25:.25,side<0?.12:-.12);this.weaponGroup.add(gun);
+      const gun=this.assets.clone('rifle',{tint:side<0?0x52ecff:0xff56d5,size:.72,wire:true});if(!gun)continue;
+      gun.position.set(side*.48,-.02,-.24);gun.rotation.set(0,side<0?-.25:.25,side<0?.12:-.12);this.weaponGroup.add(gun);
     }
   }
   start(forced=false){
     if(this.state.active)return;this.state.active=true;this.state.forced=forced;this.state.mode='rupture';this.state.startedAt=this.game.time;this.state.wave=0;
     for(const e of this.game.enemies)e.dispose?.();this.game.enemies=[];this.game.clearLocks?.();
+    this.game.setSection(3,'RUPTURE // FREE VECTOR');
     this.game.world.lines.visible=false;this.group.visible=true;this.game.world.starField.material.size=.14;this.game.scene.fog.density=.008;
     this.game.audio.energy=1;this.game.audio.section=3;this.game.audio.ruptureDrop?.();this.game.showCallout('RAIL BREAK // FREE VECTOR',1);this.game.haptic?.([18,20,35,22,60]);
     this.game.particles.burst(new THREE.Vector3(0,0,-18),420,0x56efff,22,20);this.game.particles.burst(new THREE.Vector3(0,0,-22),280,0xff52d7,18,18);this.spawnWave();
@@ -130,7 +131,7 @@ class RuptureSystem{
     this.game.showCallout(this.state.wave%3===0?'VOLUME SWARM':'FREE VECTOR LOCK',.8);
   }
   beat(step,time){
-    const s=step%16;if(s%4===0){this.game.world.pulse(s===0?1.35:.62);for(const r of this.rings)r.material.opacity=Math.min(.26,r.material.opacity+.08);}
+    const s=step%16;if(s%4===0){this.game.world.pulse(s===0?1.35:.62);for(const r of this.rings)r.material.opacity=Math.min(.24,r.material.opacity+.07);}
     if([3,7,11,15].includes(s)){
       const a=(step*.71)%TAU,p=new THREE.Vector3(Math.cos(a)*10,Math.sin(a)*5,-24-rand(0,14));this.game.particles.burst(p,20,s%2?0xff4fd6:0x50ecff,5,11);
     }
@@ -142,19 +143,20 @@ class RuptureSystem{
   update(dt,t){
     const active=this.state.active,spread=active?1:0;this.group.visible=active||(this.game.section>=2&&this.assets.models.size>0);
     this.dataCloud.rotation.z+=dt*(active?.08:.012);this.dataCloud.rotation.y=Math.sin(t*.13)*.08;
-    this.rings.forEach((r,i)=>{r.rotation.z+=dt*(.04+i*.015)*(active?4:1);r.rotation.x+=dt*.013;r.material.opacity=lerp(r.material.opacity,active?.11:.025,dt*2.5);});
+    this.rings.forEach((r,i)=>{r.rotation.z+=dt*(.04+i*.015)*(active?4:1);r.rotation.x+=dt*.013;r.material.opacity=lerp(r.material.opacity,active?.095:.025,dt*2.5);});
     for(let i=0;i<this.decor.length;i++){
-      const d=this.decor[i],z=((d.railZ+(t*(active?7:4)))+104)%104-94,fx=Math.cos(d.angle+t*.08)*d.radius,fy=d.freeY+Math.sin(t*.3+d.angle)*2,fz=-18-(i%7)*7+Math.sin(t*.21+d.angle)*4;
+      const d=this.decor[i],z=((d.railZ+(t*(active?7:4)))+104)%104-94,fx=Math.cos(d.angle+t*.08)*d.radius,fy=d.freeY+Math.sin(t*.3+d.angle)*2,fz=-20-(i%7)*8+Math.sin(t*.21+d.angle)*4;
       d.obj.position.x=lerp(d.railX,fx,spread);d.obj.position.y=lerp(d.railY,fy,spread);d.obj.position.z=lerp(z,fz,spread);d.obj.rotation.y+=dt*(d.spin+(active?.32:.08));d.obj.rotation.x+=dt*(active?.09:.02);
       d.obj.visible=active||z<-6;
     }
     if(active){
       const px=this.game.pointer.x,py=this.game.pointer.y;
-      this.game.world.avatar.position.x=lerp(this.game.world.avatar.position.x,px*3.7,dt*7);this.game.world.avatar.position.y=lerp(this.game.world.avatar.position.y,-1.5+py*2.55,dt*7);
-      this.game.camera.position.x=lerp(this.game.camera.position.x,px*3.2,dt*8);this.game.camera.position.y=lerp(this.game.camera.position.y,py*2.05,dt*8);this.game.camera.position.z=7.2+Math.sin(t*.45)*.42;this.game.camera.rotation.z=lerp(this.game.camera.rotation.z,-px*.13,dt*7);this.game.camera.rotation.x=lerp(this.game.camera.rotation.x,py*.055,dt*7);
-      this.game.camera.fov=lerp(this.game.camera.fov,72-this.game.sync/100*2,dt*2.8);this.game.camera.updateProjectionMatrix();
+      this.game.world.avatar.position.x=lerp(this.game.world.avatar.position.x,px*3.5,dt*7);this.game.world.avatar.position.y=lerp(this.game.world.avatar.position.y,-1.35+py*2.35,dt*7);this.game.world.avatar.position.z=lerp(this.game.world.avatar.position.z,2.4,dt*5);
+      this.game.camera.position.x=lerp(this.game.camera.position.x,px*2.65,dt*8);this.game.camera.position.y=lerp(this.game.camera.position.y,py*1.8,dt*8);this.game.camera.position.z=lerp(this.game.camera.position.z,8.9+Math.sin(t*.45)*.24,dt*6);this.game.camera.rotation.z=lerp(this.game.camera.rotation.z,-px*.11,dt*7);this.game.camera.rotation.x=lerp(this.game.camera.rotation.x,py*.045,dt*7);
+      this.game.camera.fov=lerp(this.game.camera.fov,74-this.game.sync/100*1.5,dt*2.8);this.game.camera.updateProjectionMatrix();
     }else{
-      this.game.world.avatar.position.x=lerp(this.game.world.avatar.position.x,0,dt*3);this.game.world.avatar.position.y=lerp(this.game.world.avatar.position.y,-2.7,dt*3);
+      this.game.world.avatar.position.x=lerp(this.game.world.avatar.position.x,0,dt*3);this.game.world.avatar.position.y=lerp(this.game.world.avatar.position.y,-2.7,dt*3);this.game.world.avatar.position.z=lerp(this.game.world.avatar.position.z,3.8,dt*4);
+      this.game.camera.position.z=lerp(this.game.camera.position.z,8,dt*4);this.game.camera.rotation.x=lerp(this.game.camera.rotation.x,0,dt*4);
     }
   }
 }
