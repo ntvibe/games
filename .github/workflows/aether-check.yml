@@ -17,3 +17,6 @@ jobs:
         run: |
           node --check aether-strike/game.js
           node --check aether-strike/models-v2.js
+          node --check aether-strike/procedural-textures.js
+          node --check aether-strike/visual-polish.js
+          node --check aether-strike/boot.js
