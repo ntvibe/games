@@ -1,0 +1,19 @@
+name: Aether Strike smoke check
+on:
+  push:
+    paths:
+      - 'aether-strike/**'
+      - '.github/workflows/aether-check.yml'
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check game modules
+        run: |
+          node --check aether-strike/game.js
+          node --check aether-strike/models-v2.js
