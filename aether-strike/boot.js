@@ -1,3 +1,4 @@
+import './mobile-performance.js';
 import { installVisualPolish } from './visual-polish.js';
 
 installVisualPolish();
