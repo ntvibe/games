@@ -1,9 +1,11 @@
-import { buildPlayerShip as buildPlayerBase, buildEnemyModel as buildEnemyBase, buildBossModel as buildBossBase, buildPickup as buildPickupBase, animateModel as animateBase, mats } from './models-v3.js';
+import { buildPlayerShip as buildPlayerBase, buildEnemyModel as buildEnemyBase, buildBossModel as buildBossBase, buildPickup as buildPickupBase, animateModel as animateBase, mats } from './models-v4.js';
 
 export { mats };
 
 export function buildPlayerShip(){
-  return buildPlayerBase();
+  const g=buildPlayerBase();
+  g.userData.modelTier='img2threejs-v4';
+  return g;
 }
 
 export function buildEnemyModel(type='scout'){
