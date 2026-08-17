@@ -36,7 +36,7 @@ jobs:
           set -euo pipefail
           OUT='pulse-ascent/assets/models/cc0'
           rm -rf "$OUT"
-          mkdir -p "$OUT"
+          mkdir -p "$OUT/Textures"
 
           pick() {
             root="$1"; pattern="$2"; out="$3"
@@ -65,6 +65,14 @@ jobs:
           pick /tmp/pulse-assets/blaster 'rifle|pistol|gun|blaster|launcher|weapon' 'blaster-rifle.glb'
           pick /tmp/pulse-assets/blaster 'crate|box' 'blaster-crate.glb'
 
+          texture="$(find /tmp/pulse-assets/factory -type f -iname 'colormap.png' | head -n 1 || true)"
+          if [ -z "$texture" ]; then
+            echo 'Expected Kenney Textures/colormap.png was not found.' >&2
+            exit 1
+          fi
+          cp "$texture" "$OUT/Textures/colormap.png"
+          echo "Textures/colormap.png <= $texture"
+
           cat > "$OUT/PROVENANCE.md" <<'EOF'
           # Pulse Ascent CC0 model provenance
 
@@ -73,11 +81,13 @@ jobs:
           - Kenney Factory Kit 3.0 — https://kenney.nl/assets/factory-kit — Creative Commons CC0.
           - Kenney Blaster Kit 2.1 — https://www.kenney.nl/assets/blaster-kit — Creative Commons CC0.
 
-          The import workflow matches source GLB basenames, copies a small runtime subset, and normalizes filenames for stable game references. Original creators retain authorship; CC0 does not require attribution, but provenance is kept intentionally.
+          The import workflow matches source GLB basenames, copies a small runtime subset, and normalizes filenames for stable game references. `Textures/colormap.png` is bundled because the source GLBs reference that shared relative dependency. Pulse Ascent replaces the imported source materials at runtime with its own cyber-metal/emissive materials, but the dependency is still packaged so GLTFLoader resolves every asset cleanly.
+
+          Original creators retain authorship; CC0 does not require attribution, but provenance is kept intentionally.
           EOF
 
           echo 'Imported model sizes:'
-          du -h "$OUT"/*
+          du -h "$OUT"/* "$OUT/Textures"/*
 
       - name: Commit imported assets
         run: |
@@ -90,4 +100,6 @@ jobs:
             exit 0
           fi
           git commit -m 'Refresh curated CC0 models for Pulse Ascent'
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main
