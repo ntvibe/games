@@ -20,6 +20,7 @@ jobs:
           node --check aether-strike/models-v3.js
           node --check aether-strike/models-v4.js
           node --check aether-strike/models-v4-refine.js
+          node --check aether-strike/models-v4-final.js
           node --check aether-strike/models-v3-runtime.js
           node --check aether-strike/models-v4-runtime.js
           node --check aether-strike/procedural-textures.js
