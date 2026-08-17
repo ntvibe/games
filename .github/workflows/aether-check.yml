@@ -25,4 +25,5 @@ jobs:
           node --check aether-strike/models-v4-runtime.js
           node --check aether-strike/procedural-textures.js
           node --check aether-strike/visual-polish.js
+          node --check aether-strike/mobile-performance.js
           node --check aether-strike/boot.js
