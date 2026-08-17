@@ -1,0 +1,27 @@
+name: Ship Forge img2threejs intake
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ship-forge/**'
+      - '.github/workflows/ship-forge-img2threejs.yml'
+permissions:
+  contents: read
+jobs:
+  validate-and-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check procedural model syntax
+        run: node --check ship-forge/ship-model.js
+      - name: Fetch img2threejs pipeline
+        run: git clone --depth 1 https://github.com/img2threejs/img2threejs.git /tmp/img2threejs
+      - name: Probe reference with img2threejs
+        run: |
+          mkdir -p ship-forge/reconstruction/ci
+          python3 /tmp/img2threejs/forge/stage1_intake/probe_image.py ship-forge/reference.jpg | tee ship-forge/reconstruction/ci/reference-probe.txt
+      - name: Keep reconstruction diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: ship-forge-img2threejs-diagnostics
+          path: ship-forge/reconstruction/ci/
