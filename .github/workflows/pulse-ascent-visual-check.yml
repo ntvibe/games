@@ -49,7 +49,7 @@ jobs:
           await page.screenshot({path:`${out}/02-combat-desktop.png`});
           await page.evaluate(()=>window.__pulseAscent.onStep(28*16,window.__pulseAscent.audio.ctx.currentTime));await page.waitForTimeout(450);
           await page.screenshot({path:`${out}/03-boss-intro-desktop.png`});
-          await page.waitForTimeout(1350);
+          await page.waitForTimeout(750);
           const boss=await page.evaluate(()=>({exists:!!window.__pulseAscent.boss,visible:!document.querySelector('#bossHud').classList.contains('hidden'),parts:window.__pulseAscent.boss?.parts.length||0,phase:window.__pulseAscent.boss?.phase||0,health:window.__pulseAscent.boss?.healthRatio?.()||0}));
           if(!boss.exists||!boss.visible||boss.parts!==8)throw new Error(`Boss state invalid: ${JSON.stringify(boss)}`);
           await page.screenshot({path:`${out}/04-boss-active-desktop.png`});await desktop.close();
