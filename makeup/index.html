@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#f7c6dd" />
+  <meta name="theme-color" content="#f7c8df" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Magic Makeup Studio</title>
   <link rel="stylesheet" href="./style.css" />
@@ -11,132 +11,90 @@
 <body>
   <main id="game" class="game-shell" aria-label="Magic Makeup Studio">
     <div id="backdrop" class="backdrop backdrop-rose" aria-hidden="true"></div>
-    <div class="ambient-sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="ambient" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
 
-    <header class="topbar">
-      <button id="backButton" class="icon-button" type="button" aria-label="Previous step">←</button>
-      <div class="step-copy">
-        <div id="stepCounter" class="step-counter">1 / 18</div>
+    <header class="hud">
+      <button id="backButton" class="hud-button" type="button" aria-label="Previous step">←</button>
+      <div class="hud-copy">
+        <div class="eyebrow-row">
+          <span id="categoryName" class="category-name">Face</span>
+          <span id="stepCounter" class="step-counter">1 / 18</span>
+        </div>
         <h1 id="stepTitle">Foundation</h1>
-        <p id="stepHint">Pick a shade, then gently brush over the face.</p>
+        <p id="stepHint">Choose a shade, then sweep the brush over the face.</p>
       </div>
-      <button id="fullscreenButton" class="icon-button" type="button" aria-label="Toggle fullscreen">⛶</button>
+      <button id="fullscreenButton" class="hud-button" type="button" aria-label="Toggle fullscreen">⛶</button>
     </header>
 
+    <div id="categoryRail" class="category-rail" aria-label="Makeover progress"></div>
+
     <section id="playfield" class="playfield" aria-label="Character makeover area">
-      <div class="halo" aria-hidden="true"></div>
-      <div id="applyHint" class="apply-hint">Choose a style below</div>
+      <div class="portrait-glow" aria-hidden="true"></div>
+      <div id="instructionChip" class="instruction-chip">Pick a shade</div>
 
-      <div id="characterStage" class="character-stage" role="img" aria-label="Princess makeover character">
+      <div id="characterStage" class="character-stage" aria-label="Princess makeover character">
         <img id="characterBase" class="character-base" alt="" draggable="false" />
+        <div id="makeupLayers" class="makeup-layers" aria-hidden="true"></div>
 
-        <svg id="faceFx" class="face-fx" viewBox="0 0 760 950" aria-hidden="true">
+        <svg id="eyeRig" class="eye-rig" viewBox="0 0 760 950" aria-hidden="true">
           <defs>
-            <radialGradient id="irisBlue" cx="38%" cy="34%" r="70%">
-              <stop offset="0" stop-color="#9ff8ff" />
-              <stop offset="0.35" stop-color="#45c8ff" />
-              <stop offset="0.72" stop-color="#2472ce" />
-              <stop offset="1" stop-color="#18336e" />
-            </radialGradient>
-            <radialGradient id="irisViolet" cx="38%" cy="34%" r="70%">
-              <stop offset="0" stop-color="#d9b5ff" />
-              <stop offset="0.4" stop-color="#8f73ff" />
-              <stop offset="1" stop-color="#513a9c" />
-            </radialGradient>
-            <filter id="softBlur"><feGaussianBlur stdDeviation="8" /></filter>
-            <clipPath id="leftEyeClip"><ellipse cx="304" cy="325" rx="58" ry="36" /></clipPath>
-            <clipPath id="rightEyeClip"><ellipse cx="454" cy="324" rx="58" ry="36" /></clipPath>
-            <clipPath id="faceClip"><ellipse cx="380" cy="354" rx="141" ry="171" /></clipPath>
+            <clipPath id="eyeClipLeft"><ellipse cx="305" cy="327" rx="42" ry="24" /></clipPath>
+            <clipPath id="eyeClipRight"><ellipse cx="455" cy="326" rx="42" ry="24" /></clipPath>
           </defs>
-
-          <ellipse id="foundationTint" cx="380" cy="354" rx="141" ry="171" fill="#e8b08d" opacity="0" clip-path="url(#faceClip)" />
-
-          <g id="eyeShadowGroup" opacity="0" style="mix-blend-mode:multiply">
-            <ellipse id="leftShadow" cx="304" cy="309" rx="56" ry="27" fill="#bd8ae5" />
-            <ellipse id="rightShadow" cx="454" cy="308" rx="56" ry="27" fill="#bd8ae5" />
+          <g id="leftEyeRig" clip-path="url(#eyeClipLeft)">
+            <ellipse id="leftIrisTint" cx="305" cy="327" rx="18" ry="19" fill="#4bbfe6" opacity=".34" />
+            <circle cx="305" cy="327" r="7.6" fill="#183348" opacity=".9" />
+            <circle cx="300" cy="321" r="3.4" fill="#fff" opacity=".92" />
           </g>
-
-          <g id="browsGroup" opacity="0" fill="none" stroke="#72503d" stroke-width="8" stroke-linecap="round">
-            <path d="M260 267 Q302 244 342 265" />
-            <path d="M416 264 Q455 244 499 266" />
+          <g id="rightEyeRig" clip-path="url(#eyeClipRight)">
+            <ellipse id="rightIrisTint" cx="455" cy="326" rx="18" ry="19" fill="#4bbfe6" opacity=".34" />
+            <circle cx="455" cy="326" r="7.6" fill="#183348" opacity=".9" />
+            <circle cx="450" cy="320" r="3.4" fill="#fff" opacity=".92" />
           </g>
-
-          <g id="leftMovingIris" clip-path="url(#leftEyeClip)">
-            <circle cx="304" cy="325" r="31" fill="url(#irisBlue)" stroke="#0c376d" stroke-width="2" />
-            <circle cx="304" cy="325" r="13.5" fill="#07152f" />
-            <circle cx="293" cy="314" r="7" fill="#fff" opacity=".95" />
-            <circle cx="313" cy="334" r="3.5" fill="#a9f7ff" opacity=".8" />
-          </g>
-          <g id="rightMovingIris" clip-path="url(#rightEyeClip)">
-            <circle cx="454" cy="324" r="31" fill="url(#irisBlue)" stroke="#0c376d" stroke-width="2" />
-            <circle cx="454" cy="324" r="13.5" fill="#07152f" />
-            <circle cx="443" cy="313" r="7" fill="#fff" opacity=".95" />
-            <circle cx="463" cy="333" r="3.5" fill="#a9f7ff" opacity=".8" />
-          </g>
-
-          <g id="eyelinerGroup" opacity="0" fill="none" stroke="#382634" stroke-width="5.5" stroke-linecap="round">
-            <path d="M254 326 Q302 305 352 326 Q361 321 369 314" />
-            <path d="M405 325 Q454 304 504 325 Q513 321 522 313" />
-          </g>
-
-          <g id="mascaraGroup" opacity="0" fill="none" stroke="#281c25" stroke-width="3.6" stroke-linecap="round">
-            <path d="M268 307 l-7 -13 M282 302 l-4 -15 M297 299 l-1 -16 M489 303 l4 -15 M475 300 l1 -16 M503 308 l8 -13" />
-          </g>
-
-          <g id="blushGroup" opacity="0" filter="url(#softBlur)">
-            <ellipse id="leftBlush" cx="282" cy="385" rx="46" ry="25" fill="#ef7d9c" />
-            <ellipse id="rightBlush" cx="477" cy="384" rx="46" ry="25" fill="#ef7d9c" />
-          </g>
-
-          <g id="highlightGroup" opacity="0" fill="#fff7dd" filter="url(#softBlur)">
-            <ellipse cx="292" cy="357" rx="28" ry="10" transform="rotate(-12 292 357)" />
-            <ellipse cx="468" cy="357" rx="28" ry="10" transform="rotate(12 468 357)" />
-            <ellipse cx="381" cy="363" rx="9" ry="33" />
-          </g>
-
-          <g id="frecklesGroup" opacity="0" fill="#a7634b">
-            <circle cx="341" cy="371" r="2.5" /><circle cx="353" cy="376" r="2" /><circle cx="365" cy="372" r="2.3" />
-            <circle cx="378" cy="377" r="2.2" /><circle cx="391" cy="372" r="2.3" /><circle cx="404" cy="376" r="2" />
-            <circle cx="417" cy="371" r="2.5" /><circle cx="329" cy="379" r="1.8" /><circle cx="430" cy="379" r="1.8" />
-          </g>
-
-          <g id="lipsOverlay" opacity="0" style="mix-blend-mode:multiply">
-            <path id="upperLip" d="M342 424 Q363 410 380 420 Q398 410 420 424 Q397 431 380 429 Q362 431 342 424Z" fill="#d35378" />
-            <path id="lowerLip" d="M342 424 Q362 433 380 432 Q399 433 420 424 Q405 448 380 450 Q356 448 342 424Z" fill="#df6788" />
-          </g>
-          <path id="lipGloss" d="M356 434 Q379 441 404 432" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity="0" />
         </svg>
 
-        <div id="gemsOverlay" class="asset-overlay gems-overlay" aria-hidden="true"></div>
-        <div id="earringsOverlay" class="asset-overlay earrings-overlay" aria-hidden="true"></div>
-        <div id="necklaceOverlay" class="asset-overlay necklace-overlay" aria-hidden="true"></div>
-        <div id="hairclipOverlay" class="asset-overlay hairclip-overlay" aria-hidden="true"></div>
-        <div id="tiaraOverlay" class="asset-overlay tiara-overlay" aria-hidden="true"></div>
-        <div id="sparkleOverlay" class="asset-overlay sparkle-overlay" aria-hidden="true"></div>
+        <div id="gemsOverlay" class="asset-overlay gems-overlay"></div>
+        <div id="earringsOverlay" class="asset-overlay earrings-overlay"></div>
+        <div id="necklaceOverlay" class="asset-overlay necklace-overlay"></div>
+        <div id="hairclipOverlay" class="asset-overlay hairclip-overlay"></div>
+        <div id="tiaraOverlay" class="asset-overlay tiara-overlay"></div>
+        <div id="sparkleOverlay" class="asset-overlay sparkle-overlay"></div>
         <img id="blinkOverlay" class="blink-overlay" src="./assets/blink.webp" alt="" draggable="false" />
       </div>
 
-      <div id="brushCursor" class="brush-cursor" aria-hidden="true"></div>
-      <div id="dabLayer" class="dab-layer" aria-hidden="true"></div>
+      <div id="toolCursor" class="tool-cursor" aria-hidden="true">
+        <div class="tool-graphic"></div>
+        <div class="tool-glow"></div>
+      </div>
+      <div id="particleLayer" class="particle-layer" aria-hidden="true"></div>
     </section>
 
-    <section class="controls" aria-label="Makeup choices">
-      <div id="options" class="options" role="list"></div>
-      <div class="action-row">
-        <div class="coverage-wrap" aria-hidden="true">
-          <div class="coverage-label"><span id="coverageText">0%</span> applied</div>
+    <section class="tray" aria-label="Makeup choices">
+      <div class="tray-head">
+        <div id="toolLabel" class="tool-label">Foundation brush</div>
+        <div id="coverageWrap" class="coverage-wrap">
           <div class="coverage-track"><div id="coverageFill" class="coverage-fill"></div></div>
+          <span id="coverageText">0%</span>
         </div>
-        <button id="nextButton" class="next-button" type="button" disabled>Next ✨</button>
+      </div>
+      <div id="options" class="options" role="list"></div>
+      <div class="tray-actions">
+        <button id="nextButton" class="primary-button" type="button" disabled>Continue <span>→</span></button>
       </div>
     </section>
 
     <div id="finishPanel" class="finish-panel" hidden>
+      <div class="finish-bloom" aria-hidden="true"></div>
       <div class="finish-card">
-        <div class="finish-stars">✨ 💖 ✨</div>
-        <h2>Beautiful look!</h2>
-        <p>You finished all 18 makeover steps.</p>
-        <button id="replayButton" class="next-button" type="button">Make another look</button>
+        <div class="finish-kicker">Makeover complete</div>
+        <h2>✨ Gorgeous! ✨</h2>
+        <p>Your final look is ready.</p>
+        <div class="finish-actions">
+          <button id="replayButton" class="primary-button" type="button">Create another look</button>
+          <button id="closeFinishButton" class="secondary-button" type="button">Admire the look</button>
+        </div>
       </div>
     </div>
   </main>
