@@ -100,6 +100,14 @@ jobs:
             exit 0
           fi
           git commit -m 'Refresh curated CC0 models for Pulse Ascent'
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          for attempt in 1 2 3 4 5; do
+            echo "Push attempt $attempt"
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          echo 'Could not publish imported assets after 5 rebased attempts.' >&2
+          exit 1
