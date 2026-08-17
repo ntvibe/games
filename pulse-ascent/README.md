@@ -1,6 +1,6 @@
 # PULSE//ASCENT
 
-An original mobile-first synesthetic rail shooter built as a browser game. It is inspired by the design principles of music-driven rail shooters: lock-on targeting, quantized attacks, evolving audiovisual density, and transforming boss encounters.
+An original mobile-first synesthetic rail shooter built as a browser game. It is inspired by the design principles of music-driven rail shooters: lock-on targeting, quantized attacks, evolving audiovisual density, spatial mode changes, and transforming boss encounters.
 
 No proprietary Rez Infinite art, code, models, UI assets, sound effects, or music are included.
 
@@ -22,35 +22,99 @@ The entire game runs from a 128 BPM Web Audio clock:
 - player volleys snap to the same subdivision grid
 - each lock and shot creates a pitched synthesized note
 - boss pulses, transformations, and attacks share the same clock
-- bloom, exposure, and camera response read the live beat phase
+- bloom, exposure, camera response, haptics, rupture choreography, and synth accents read the same musical phase
 
-## Generative audio
+## Generative cyber audio
 
-There are no audio files. The game synthesizes its kick, snare, hats, bass, plucks, pads, lock notes, shot notes, damage cues, and overdrive effects in Web Audio. Additional musical density is unlocked dynamically as the player's chain and sector intensity increase.
+There are no prerecorded music files. The soundtrack is synthesized live in Web Audio and becomes more aggressive as performance and game state intensify.
+
+Core and expansion layers include:
+
+- techno kick, snare and high hats
+- Reese bass and sub pulses
+- FM cyber stabs
+- acid-style resonant sequences
+- industrial toms and metallic impacts
+- glitch/noise percussion
+- melodic plucks, pads and lock tones
+- spatial shot notes
+- danger, damage, phase-shift and overdrive cues
+- a dedicated FREE VECTOR drop and denser rupture pattern
+
+Player locks, release timing, kills, damage, overdrive, section transitions and boss phases all contribute directly to the musical arrangement.
+
+## FREE VECTOR rupture
+
+The rail intentionally breaks during the middle act for 12 bars (about 22.5 seconds at 128 BPM).
+
+During FREE VECTOR:
+
+- the tunnel rail disappears
+- the camera and avatar move through a broader 3D flight volume
+- target formations occupy true depth, height and lateral space
+- imported machine fragments spread into a floating cyber-temple field
+- rotating procedural rings and a dense data cloud replace the normal corridor language
+- rhythmic waves, particles and cyber synth layers intensify together
+- the game collapses back onto the rail on a synchronized re-entry hit
+
+The Convergence boss now arrives later, after the post-rupture re-entry section.
+
+## CC0 3D asset pipeline
+
+`pulse-ascent/assets/models/cc0/` contains a small curated runtime subset from free Kenney CC0 packs. The current import uses industrial pieces from Factory Kit and weapon/prop pieces from Blaster Kit.
+
+The repository includes `.github/workflows/pulse-ascent-import-cc0.yml`, which can reproducibly:
+
+1. download the official source packs
+2. choose models by source GLB basename rather than brittle folder matching
+3. normalize runtime filenames
+4. package the shared `Textures/colormap.png` dependency required by the source GLBs
+5. preserve provenance information
+6. rebase/retry its generated asset commit when other game work is landing on `main`
+
+Imported source materials are replaced at runtime with Pulse Ascent's own dark metallic, cyan/magenta emissive treatment and optional procedural edge outlines.
 
 ## Procedural rendering
 
 - Three.js r185 with ACES tone mapping and UnrealBloom
 - procedural wireframe enemies and avatar
+- locally served imported GLB machine/weapon geometry
 - moving tunnel and perspective grid
-- 4,800-point data/star field
+- 4,800-point rail data/star field plus a 900-point rupture cloud
 - 6,500-slot GPU particle pool
+- procedural free-vector ring lattice
 - palette/fog transitions by sector
 - transforming eight-part boss with three phases
 - adaptive pixel ratio for slower mobile GPUs
+- low-FPS simulation catch-up so visuals remain much closer to the Web Audio clock
 
-## Game loop
+## Game progression
 
-Five escalating sectors:
+The course now behaves as a sequence of contrasting acts rather than one continuously denser rail:
 
 1. AWAKENING
 2. SIGNAL BLOOM
 3. VECTOR TEMPLE
-4. ASCENSION
-5. THE CONVERGENCE
+4. RUPTURE // FREE VECTOR
+5. ASCENSION // REENTRY
+6. THE CONVERGENCE // ENGINE
 
-Enemy choreography includes rings, lines, spirals, tanks, analysis nodes, and rhythmic danger projectiles. Performance drives score multiplier, music energy, audiovisual density, evolution, and overdrive charge.
+Enemy choreography includes rings, lines, spirals, tanks, analysis nodes, sentinels, prisms, volumetric rupture targets, rhythmic danger projectiles and an eight-part boss. Performance drives score multiplier, music energy, audiovisual density, evolution, aim assistance and overdrive charge.
+
+## Browser gauntlet
+
+The visual GitHub Actions gauntlet boots the actual WebGL/WebAudio game in Chromium and verifies more than syntax:
+
+- normal lock/release combat
+- local GLB loading without console/page errors
+- FREE VECTOR state and imported scene population
+- a real rupture target interaction
+- desktop screenshots
+- 390x844 mobile FREE VECTOR screenshot and overflow checks
+- forced boss state with no stale pre-boss entities
+
+Screenshots and state JSON are uploaded as workflow artifacts for visual review.
 
 ## Technical notes
 
-This is a no-build static game intended for GitHub Pages. Three.js modules are pinned through an import map. `window.__pulseAscent` exposes the live game instance for browser inspection and debugging.
+This is a no-build static game intended for GitHub Pages. Three.js modules are pinned through an import map. `window.__pulseAscent` exposes the live game instance for browser inspection, while `window.__pulseExpansion` exposes FREE VECTOR/asset diagnostics used by the browser gauntlet.
