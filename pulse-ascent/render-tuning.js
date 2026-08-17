@@ -1,3 +1,4 @@
+document.querySelector('#rotateHint')?.remove();
 const applyRenderTuning=()=>{
   const game=window.__pulseAscent;
   if(!game?.bloom){requestAnimationFrame(applyRenderTuning);return;}
