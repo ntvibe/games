@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#040812" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>AETHER STRIKE — Skybreak</title>
+  <style>
+    :root{color-scheme:dark;--cyan:#6ff9ff;--blue:#6594ff;--violet:#a678ff;--hot:#ff5d9d;--gold:#ffd57d;--ink:#050814}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#02050b;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;touch-action:none;overscroll-behavior:none;user-select:none}
+    #game{position:fixed;inset:0;width:100%;height:100%;display:block}
+    #hud{position:fixed;inset:0;z-index:2;pointer-events:none;color:#fff;padding:calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 12px) calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 12px);text-shadow:0 0 16px rgba(93,220,255,.34)}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.brand{font-size:9px;font-weight:900;letter-spacing:.24em;text-transform:uppercase;color:rgba(224,245,255,.55)}.brand b{display:block;margin-top:3px;font-size:18px;letter-spacing:.08em;color:#fff}.brand i{font-style:normal;color:var(--cyan)}
+    .score{text-align:right;font-variant-numeric:tabular-nums}.score strong{display:block;font-size:23px;line-height:.9;letter-spacing:.02em}.score span{font-size:8px;letter-spacing:.2em;color:rgba(255,255,255,.48)}
+    .status{position:absolute;left:12px;top:82px;width:min(48vw,240px);display:grid;gap:7px}.line{display:grid;grid-template-columns:48px 1fr 35px;gap:7px;align-items:center;font-size:8px;font-weight:900;letter-spacing:.12em;color:rgba(255,255,255,.58)}.bar{height:5px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.10);box-shadow:inset 0 0 10px rgba(0,0,0,.6)}.fill{height:100%;transform-origin:left center;box-shadow:0 0 12px currentColor}.shield{color:var(--cyan);background:linear-gradient(90deg,#42dcff,#7effd2)}.overdrive{color:var(--violet);background:linear-gradient(90deg,#6d74ff,#d56dff 65%,#ff76b5)}
+    #reticle{position:fixed;left:50%;top:43%;width:56px;height:56px;translate:-50% -50%;pointer-events:none;opacity:.8;filter:drop-shadow(0 0 8px rgba(95,238,255,.6))}.r1,.r2{position:absolute;inset:0;border:1px solid rgba(132,247,255,.72);border-radius:50%}.r1:before,.r1:after{content:"";position:absolute;background:rgba(132,247,255,.78)}.r1:before{width:1px;height:10px;left:50%;top:-7px}.r1:after{height:1px;width:10px;top:50%;right:-7px}.r2{inset:16px;border-color:rgba(255,255,255,.75);box-shadow:0 0 14px rgba(103,238,255,.3)}#reticle.lock .r1{border-color:#ff8aca;box-shadow:0 0 20px rgba(255,73,159,.5)}#reticle.lock .r2{border-color:#fff}
+    #mission{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);translate:-50% 0;padding:7px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(5,10,25,.26);backdrop-filter:blur(10px);font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);pointer-events:none;white-space:nowrap}.wave{color:var(--gold)}
+    #controls{position:fixed;inset:0;z-index:3;pointer-events:none}.stickZone{position:absolute;left:max(10px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));width:min(42vw,190px);height:min(34vh,190px);pointer-events:auto}.stickBase{position:absolute;left:18px;bottom:18px;width:112px;height:112px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:radial-gradient(circle,rgba(105,238,255,.08),rgba(10,15,30,.14) 55%,rgba(10,15,30,.03));box-shadow:inset 0 0 30px rgba(87,206,255,.06)}.stickKnob{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px;border-radius:50%;border:1px solid rgba(180,250,255,.35);background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.28),rgba(91,213,255,.11) 48%,rgba(7,15,29,.35));box-shadow:0 0 18px rgba(86,222,255,.16);transform:translate(0,0)}
+    .actionZone{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));width:min(44vw,210px);height:min(35vh,210px);pointer-events:none}.btn{pointer-events:auto;appearance:none;position:absolute;border-radius:50%;color:#fff;font-weight:950;letter-spacing:.12em;border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);text-shadow:0 0 10px currentColor;transition:transform .08s ease,box-shadow .08s ease}.btn:active,.btn.active{transform:scale(.91)}#fire{right:8px;bottom:12px;width:92px;height:92px;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.25),rgba(255,76,151,.12) 35%,rgba(15,8,28,.55) 70%);box-shadow:0 0 28px rgba(255,72,154,.18),inset 0 0 25px rgba(255,80,160,.08)}#fire.active{box-shadow:0 0 44px rgba(255,76,155,.45),inset 0 0 28px rgba(255,104,180,.22)}#dash{right:105px;bottom:96px;width:62px;height:62px;font-size:9px;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.23),rgba(86,224,255,.12) 40%,rgba(7,18,28,.52));box-shadow:0 0 24px rgba(83,235,255,.15)}
+    #start,#gameover{position:fixed;inset:0;z-index:8;display:grid;place-items:center;padding:26px;background:radial-gradient(circle at 50% 37%,rgba(57,72,168,.22),rgba(0,0,0,.82) 67%);color:#fff;text-align:center;transition:opacity .45s ease,visibility .45s ease}.panel{width:min(560px,100%)}.kicker{font-size:10px;letter-spacing:.34em;font-weight:900;color:var(--cyan);text-transform:uppercase}.logo{font-size:clamp(46px,14vw,88px);line-height:.82;letter-spacing:-.065em;margin:12px 0 16px;font-weight:1000;background:linear-gradient(180deg,#fff 18%,#d7e1ff 52%,#65edff 92%);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 0 25px rgba(91,218,255,.2))}.logo small{display:block;font-size:.29em;letter-spacing:.27em;margin-top:15px}.desc{max-width:430px;margin:0 auto 22px;color:rgba(255,255,255,.67);font-size:14px;line-height:1.5}.enter{appearance:none;border:0;border-radius:999px;padding:16px 25px;background:linear-gradient(105deg,#6ff9ff,#7385ff 53%,#ff6db1);font-weight:950;letter-spacing:.14em;color:#07101b;box-shadow:0 13px 45px rgba(79,176,255,.28)}.hint{margin-top:15px;font-size:9px;line-height:1.7;letter-spacing:.12em;color:rgba(255,255,255,.42);text-transform:uppercase}.hidden{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+    #gameover{display:none;background:rgba(2,5,12,.84);backdrop-filter:blur(14px)}#gameover.show{display:grid}.result{font-size:42px;font-weight:1000;letter-spacing:-.04em;margin:10px 0}.result small{display:block;font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.5)}
+    #toast{position:fixed;left:50%;top:28%;translate:-50% -50%;z-index:5;pointer-events:none;color:#fff;font-size:11px;font-weight:950;letter-spacing:.22em;white-space:nowrap;opacity:0;text-shadow:0 0 24px currentColor}
+    #flash{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 45%,rgba(255,255,255,.35),rgba(255,75,151,.15) 28%,transparent 68%);mix-blend-mode:screen}
+    #damage{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;box-shadow:inset 0 0 90px rgba(255,35,90,.65)}
+    #quality{position:fixed;right:7px;top:50%;translate:0 -50%;z-index:2;pointer-events:none;font-size:7px;letter-spacing:.14em;color:rgba(255,255,255,.21);writing-mode:vertical-rl;text-transform:uppercase}
+    @media (min-width:760px){#fire{width:104px;height:104px}.stickBase{width:126px;height:126px}.brand b{font-size:21px}.status{top:88px}.score strong{font-size:26px}}
+  </style>
+  <script type="importmap">
+  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div class="top">
+      <div class="brand">NTVIBE // MOBILE RENDER LAB <b>AETHER <i>STRIKE</i></b></div>
+      <div class="score"><strong id="score">000000</strong><span>COMBAT SCORE</span></div>
+    </div>
+    <div class="status">
+      <div class="line"><span>SHIELD</span><div class="bar"><div id="shieldBar" class="fill shield"></div></div><span id="shieldText">100</span></div>
+      <div class="line"><span>DRIVE</span><div class="bar"><div id="driveBar" class="fill overdrive"></div></div><span id="driveText">100</span></div>
+    </div>
+  </div>
+  <div id="mission">WAVE <span class="wave" id="wave">01</span> · <span id="objective">CLEAR THE SKY</span></div>
+  <div id="reticle"><div class="r1"></div><div class="r2"></div></div>
+  <div id="controls">
+    <div class="stickZone" id="stickZone"><div class="stickBase"><div class="stickKnob" id="stickKnob"></div></div></div>
+    <div class="actionZone"><button class="btn" id="dash">PULSE</button><button class="btn" id="fire">FIRE</button></div>
+  </div>
+  <div id="start">
+    <div class="panel">
+      <div class="kicker">Procedural mobile 3D combat demo</div>
+      <div class="logo">AETHER<br>STRIKE<small>SKYBREAK</small></div>
+      <p class="desc">Pilot a grav-interceptor through floating ruins, hunt sentinel drones and survive escalating attack waves above a living storm ocean.</p>
+      <button class="enter" id="enter">LAUNCH INTERCEPTOR</button>
+      <div class="hint">Left thumb: move · hold FIRE: plasma cannons · PULSE: evade + recharge<br>Desktop: WASD / arrows · Space · Shift</div>
+    </div>
+  </div>
+  <div id="gameover"><div class="panel"><div class="kicker">Interceptor lost</div><div class="result" id="finalScore">0<small>FINAL SCORE</small></div><button class="enter" id="restart">RELAUNCH</button></div></div>
+  <div id="toast"></div><div id="flash"></div><div id="damage"></div><div id="quality">Adaptive high render</div>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
