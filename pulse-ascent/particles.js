@@ -25,6 +25,7 @@ export class ParticlePool {
   }
   burst(pos,amount=42,color=0x6af7ff,power=7,size=10){
     this.tmp.set(color);
+    const lifeScale=.75+Math.min(1.35,power/18);
     for(let n=0;n<amount;n++){
       const i=this.cursor++%this.count, j=i*3;
       this.positions[j]=pos.x;this.positions[j+1]=pos.y;this.positions[j+2]=pos.z;
@@ -32,7 +33,7 @@ export class ParticlePool {
       const p=power*rand(.35,1.15);
       this.vel[j]=Math.cos(a)*r*p;this.vel[j+1]=Math.sin(a)*r*p;this.vel[j+2]=u*p+rand(-1,2);
       this.colors[j]=this.tmp.r*rand(.65,1.08);this.colors[j+1]=this.tmp.g*rand(.65,1.08);this.colors[j+2]=this.tmp.b*rand(.65,1.08);
-      this.life[i]=this.maxLife[i]=rand(.35,.95);this.sizes[i]=rand(size*.35,size);
+      const life=rand(.18,.52)*lifeScale;this.life[i]=this.maxLife[i]=life;this.sizes[i]=rand(size*.35,size);
     }
     this.dirty();
   }
@@ -52,7 +53,7 @@ export class ParticlePool {
       if(this.life[i]<=0){this.positions[j+2]=9999;continue;}
       this.positions[j]+=this.vel[j]*dt;this.positions[j+1]+=this.vel[j+1]*dt;this.positions[j+2]+=this.vel[j+2]*dt;
       this.vel[j]*=.985;this.vel[j+1]*=.985;this.vel[j+2]*=.985;
-      this.sizes[i]*=.985;
+      this.sizes[i]*=.982;
     }
     if(any) this.dirty();
   }
