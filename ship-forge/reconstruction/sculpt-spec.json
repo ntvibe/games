@@ -1,0 +1,47 @@
+{
+  "schema": "img2threejs-inspired-object-sculpt-spec/v1",
+  "subject": "NX-79 Acheron cyberpunk spacecraft",
+  "reference": "../reference.jpg",
+  "subjectClass": "object",
+  "profile": "hard-surface",
+  "qualityContract": {
+    "target": "high-detail procedural browser model",
+    "strictQuality": true,
+    "priority": ["silhouette", "component hierarchy", "engine identity", "panel density", "material separation", "emissive accents"],
+    "singleViewLimit": "Hidden side, underside and rear plumbing are inferred rather than claimed as exact."
+  },
+  "cameraEvidence": {
+    "view": "left-facing three-quarter side view, slightly above centerline",
+    "visibleConfidence": 0.92,
+    "hiddenConfidence": 0.66,
+    "undersideConfidence": 0.54,
+    "rearConfidence": 0.71
+  },
+  "detailInventory": [
+    "faceted dark canopy with orange internal illumination",
+    "long armored spear-like nose",
+    "layered graphite and gunmetal hull plates",
+    "red macro accent panels",
+    "dorsal mast and antenna cluster",
+    "top weapon turrets and sensors",
+    "paired main rear thrusters plus secondary outer engines",
+    "concentric engine collars and emissive cores",
+    "side mechanical cylinders and longitudinal piping",
+    "under-nose gun barrels",
+    "underwing cannon pods",
+    "segmented vents, ribs, seams and fasteners",
+    "angular rear fins and stabilizers",
+    "dense micro-greeble fields",
+    "warm red/orange navigation LEDs"
+  ],
+  "passes": [
+    {"id":1,"name":"blockout","status":"pass","focus":"primary silhouette and mass distribution"},
+    {"id":2,"name":"structural","status":"pass","focus":"side armor, rails and stabilizers"},
+    {"id":3,"name":"propulsion","status":"pass","focus":"quad-engine architecture and collars"},
+    {"id":4,"name":"form","status":"pass","focus":"dorsal superstructure, canopy and fins"},
+    {"id":5,"name":"mechanical","status":"pass","focus":"weapons, piping and exposed machinery"},
+    {"id":6,"name":"surface","status":"pass","focus":"panel language, vents, bolts and micro-greebles"},
+    {"id":7,"name":"underside","status":"pass-with-inference","focus":"service modules and landing sockets"},
+    {"id":8,"name":"material-lighting","status":"pass","focus":"graphite PBR separation, red accents and engine emissives"}
+  ]
+}
