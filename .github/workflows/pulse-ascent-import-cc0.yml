@@ -1,0 +1,87 @@
+name: Pulse Ascent import CC0 models
+
+on:
+  push:
+    paths:
+      - '.github/workflows/pulse-ascent-import-cc0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download official CC0 packs
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pulse-assets/factory /tmp/pulse-assets/blaster
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://kenney.nl/media/pages/assets/factory-kit/edaac9d4f6-1777639602/kenney_factory-kit_3.0.zip' \
+            -o /tmp/factory.zip
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://www.kenney.nl/media/pages/assets/blaster-kit/261d80a716-1753959510/kenney_blaster-kit_2.1.zip' \
+            -o /tmp/blaster.zip
+          unzip -q /tmp/factory.zip -d /tmp/pulse-assets/factory
+          unzip -q /tmp/blaster.zip -d /tmp/pulse-assets/blaster
+
+      - name: Curate lightweight runtime GLBs
+        run: |
+          set -euo pipefail
+          OUT='pulse-ascent/assets/models/cc0'
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+
+          pick() {
+            root="$1"; pattern="$2"; out="$3"
+            file="$(find "$root" -type f \( -iname '*.glb' -o -iname '*.gltf' \) | grep -Ei "$pattern" | head -n 1 || true)"
+            if [ -z "$file" ]; then
+              file="$(find "$root" -type f -iname '*.glb' | head -n 1 || true)"
+            fi
+            if [ -z "$file" ]; then
+              echo "No GLB found for $out" >&2
+              exit 1
+            fi
+            cp "$file" "$OUT/$out"
+            echo "$out <= $file"
+          }
+
+          pick /tmp/pulse-assets/factory 'machine|generator|engine|motor|pump' 'factory-machine.glb'
+          pick /tmp/pulse-assets/factory 'pipe|tube|duct' 'factory-pipe.glb'
+          pick /tmp/pulse-assets/factory 'conveyor|belt' 'factory-conveyor.glb'
+          pick /tmp/pulse-assets/factory 'tank|silo|container' 'factory-tank.glb'
+          pick /tmp/pulse-assets/blaster 'blaster|rifle|weapon|gun' 'blaster-rifle.glb'
+          pick /tmp/pulse-assets/blaster 'crate|box' 'blaster-crate.glb'
+
+          cat > "$OUT/PROVENANCE.md" <<'EOF'
+          # Pulse Ascent CC0 model provenance
+
+          Runtime models in this directory are curated automatically from the official free Kenney packs below.
+
+          - Kenney Factory Kit 3.0 — https://kenney.nl/assets/factory-kit — Creative Commons CC0.
+          - Kenney Blaster Kit 2.1 — https://www.kenney.nl/assets/blaster-kit — Creative Commons CC0.
+
+          The import workflow copies a small subset and normalizes filenames for stable game references. Original creators retain authorship; CC0 does not require attribution, but provenance is kept intentionally.
+          EOF
+
+          echo 'Imported model sizes:'
+          du -h "$OUT"/*
+
+      - name: Commit imported assets
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pulse-ascent/assets/models/cc0
+          if git diff --cached --quiet; then
+            echo 'No asset changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Import curated CC0 models for Pulse Ascent'
+          git push origin HEAD:main
