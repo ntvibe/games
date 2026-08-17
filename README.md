@@ -4,6 +4,21 @@ A collection of browser games. Each game lives in its own top-level folder so it
 
 ## Current games
 
+### `pulse-ascent/` — PULSE//ASCENT
+
+An original mobile-first synesthetic rail shooter with:
+
+- hold-to-lock targeting for up to 8 simultaneous targets
+- release-to-fire volleys quantized to a shared 128 BPM music clock
+- enemy formations, hazards, boss behavior, visual pulses and haptics synchronized to the same rhythm grid
+- entirely synthesized Web Audio soundtrack with kick, snare, hats, bass, pads, melodic plucks and interaction notes
+- performance-driven musical density and score-chain intensity
+- five escalating sectors and a transforming three-phase boss
+- procedural wireframe enemies, avatar, tunnel/grid geometry and palette transitions
+- 4,800-point data field and 6,500-slot shader particle pool
+- ACES tone mapping, UnrealBloom and adaptive mobile render resolution
+- no downloaded game art or prerecorded music
+
 ### `makeup/` — Magic Makeup Studio
 
 An ad-free full-screen makeup and jewelry game prototype with:
@@ -50,16 +65,19 @@ A high-end mobile-first 3D aerial combat demo with:
 games/
 ├── index.html
 ├── README.md
-├── makeup/
+├── pulse-ascent/
 │   ├── index.html
 │   ├── style.css
-│   └── game.js
+│   ├── util.js
+│   ├── audio.js
+│   ├── particles.js
+│   ├── world.js
+│   ├── entities.js
+│   ├── game.js
+│   └── README.md
+├── makeup/
 ├── neon-rift/
-│   ├── index.html
-│   └── game.js
 └── aether-strike/
-    ├── index.html
-    └── game.js
 ```
 
-Open the repository root as a static site and choose a game, or open a game's `index.html` directly through a local/static web server.
+Open the repository root as a static site and choose a game, or open a game's `index.html` through a local/static web server.
