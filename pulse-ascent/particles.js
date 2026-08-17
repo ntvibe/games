@@ -17,8 +17,8 @@ export class ParticlePool {
     this.mat=new THREE.ShaderMaterial({
       transparent:true, depthWrite:false, vertexColors:true, blending:THREE.AdditiveBlending,
       uniforms:{uPixel:{value:Math.min(devicePixelRatio,2)}},
-      vertexShader:`uniform float uPixel; attribute float aSize; varying vec3 vColor; void main(){vColor=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uPixel*(170.0/max(1.0,-mv.z)); gl_Position=projectionMatrix*mv;}`,
-      fragmentShader:`varying vec3 vColor; void main(){vec2 p=gl_PointCoord-.5; float d=length(p); float a=smoothstep(.5,.08,d); gl_FragColor=vec4(vColor,a*a);}`
+      vertexShader:`uniform float uPixel; attribute float aSize; varying vec3 vColor; void main(){vColor=color; vec4 mv=modelViewMatrix*vec4(position,1.); float depth=max(5.0,-mv.z); gl_PointSize=clamp(aSize*uPixel*(68.0/depth),1.0,42.0*uPixel); gl_Position=projectionMatrix*mv;}`,
+      fragmentShader:`varying vec3 vColor; void main(){vec2 p=gl_PointCoord-.5; float d=length(p); float a=smoothstep(.5,.08,d); gl_FragColor=vec4(vColor,a*a*.86);}`
     });
     this.points=new THREE.Points(geo,this.mat); this.points.frustumCulled=false; scene.add(this.points);
     this.cursor=0; this.tmp=new THREE.Color();
@@ -31,7 +31,7 @@ export class ParticlePool {
       const a=rand(0,TAU), u=rand(-1,1), r=Math.sqrt(1-u*u)*rand(.35,1);
       const p=power*rand(.35,1.15);
       this.vel[j]=Math.cos(a)*r*p;this.vel[j+1]=Math.sin(a)*r*p;this.vel[j+2]=u*p+rand(-1,2);
-      this.colors[j]=this.tmp.r*rand(.65,1.2);this.colors[j+1]=this.tmp.g*rand(.65,1.2);this.colors[j+2]=this.tmp.b*rand(.65,1.2);
+      this.colors[j]=this.tmp.r*rand(.65,1.08);this.colors[j+1]=this.tmp.g*rand(.65,1.08);this.colors[j+2]=this.tmp.b*rand(.65,1.08);
       this.life[i]=this.maxLife[i]=rand(.35,.95);this.sizes[i]=rand(size*.35,size);
     }
     this.dirty();
