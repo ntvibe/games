@@ -2,9 +2,16 @@
   "use strict";
 
   const nativeFetch = window.fetch.bind(window);
-  const ATLAS_REPAIR_PARTS = Array.from({ length: 4 }, (_, index) =>
-    `./assets/atlas.04.${index}.b64`
-  );
+  const ATLAS_REPAIR_PARTS = [
+    "./assets/atlas.04.0.0.b64",
+    "./assets/atlas.04.0.1.b64",
+    "./assets/atlas.04.0.2.b64",
+    "./assets/atlas.04.0.3.b64",
+    "./assets/atlas.04.0.4.b64",
+    "./assets/atlas.04.1.b64",
+    "./assets/atlas.04.2.b64",
+    "./assets/atlas.04.3.b64"
+  ];
   const CHARACTER_PARTS = Array.from({ length: 5 }, (_, index) =>
     `./assets/character.${String(index).padStart(2, "0")}.b64`
   );
