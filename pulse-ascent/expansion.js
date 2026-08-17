@@ -141,13 +141,13 @@ class RuptureSystem{
     const chip=document.querySelector('#modeChip');if(!chip)return;chip.textContent=this.state.active?'FREE VECTOR // 3D FLIGHT':'RAIL VECTOR';chip.classList.toggle('active',this.state.active);
   }
   update(dt,t){
-    const active=this.state.active,spread=active?1:0;this.group.visible=active||(this.game.section>=2&&this.assets.models.size>0);
-    this.dataCloud.rotation.z+=dt*(active?.08:.012);this.dataCloud.rotation.y=Math.sin(t*.13)*.08;
-    this.rings.forEach((r,i)=>{r.rotation.z+=dt*(.04+i*.015)*(active?4:1);r.rotation.x+=dt*.013;r.material.opacity=lerp(r.material.opacity,active?.095:.025,dt*2.5);});
+    const active=this.state.active,spread=active?1:0,showDecor=active||(this.game.section>=2&&this.assets.models.size>0);this.group.visible=showDecor;
+    this.dataCloud.visible=active;this.dataCloud.rotation.z+=dt*(active?.08:.012);this.dataCloud.rotation.y=Math.sin(t*.13)*.08;
+    this.rings.forEach((r,i)=>{r.visible=active;r.rotation.z+=dt*(.04+i*.015)*(active?4:1);r.rotation.x+=dt*.013;r.material.opacity=lerp(r.material.opacity,active?.095:.025,dt*2.5);});
     for(let i=0;i<this.decor.length;i++){
       const d=this.decor[i],z=((d.railZ+(t*(active?7:4)))+104)%104-94,fx=Math.cos(d.angle+t*.08)*d.radius,fy=d.freeY+Math.sin(t*.3+d.angle)*2,fz=-20-(i%7)*8+Math.sin(t*.21+d.angle)*4;
       d.obj.position.x=lerp(d.railX,fx,spread);d.obj.position.y=lerp(d.railY,fy,spread);d.obj.position.z=lerp(z,fz,spread);d.obj.rotation.y+=dt*(d.spin+(active?.32:.08));d.obj.rotation.x+=dt*(active?.09:.02);
-      d.obj.visible=active||z<-6;
+      d.obj.visible=showDecor&&(active||z<-6);
     }
     if(active){
       const px=this.game.pointer.x,py=this.game.pointer.y;
