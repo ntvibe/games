@@ -17,7 +17,7 @@ export class ParticlePool {
     this.mat=new THREE.ShaderMaterial({
       transparent:true, depthWrite:false, vertexColors:true, blending:THREE.AdditiveBlending,
       uniforms:{uPixel:{value:Math.min(devicePixelRatio,2)}},
-      vertexShader:`attribute float aSize; varying vec3 vColor; void main(){vColor=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uPixel*(170.0/max(1.0,-mv.z)); gl_Position=projectionMatrix*mv;}`,
+      vertexShader:`uniform float uPixel; attribute float aSize; varying vec3 vColor; void main(){vColor=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=aSize*uPixel*(170.0/max(1.0,-mv.z)); gl_Position=projectionMatrix*mv;}`,
       fragmentShader:`varying vec3 vColor; void main(){vec2 p=gl_PointCoord-.5; float d=length(p); float a=smoothstep(.5,.08,d); gl_FragColor=vec4(vColor,a*a);}`
     });
     this.points=new THREE.Points(geo,this.mat); this.points.frustumCulled=false; scene.add(this.points);
