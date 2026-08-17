@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#02030a" />
   <meta name="color-scheme" content="dark" />
   <title>PULSE//ASCENT — Synesthetic Rail Shooter</title>
-  <meta name="description" content="An original generative rhythm rail-shooter inspired by the synesthetic design language of classic music shooters." />
+  <meta name="description" content="An original generative rhythm rail-shooter with beat-quantized combat, procedural visuals and synthesized music." />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -17,24 +17,29 @@
       <div class="metric center"><span class="kicker" id="sectionLabel">SECTOR 01</span><strong id="sectionName">AWAKENING</strong></div>
       <div class="metric right"><span class="kicker">CHAIN</span><strong id="chain">x1.0</strong></div>
     </div>
+    <div id="bossHud" class="boss-hud hidden"><span>CONVERGENCE INTEGRITY</span><div><i id="bossFill"></i></div><b id="bossPhase">PHASE I</b></div>
     <div class="hud-bottom">
-      <div class="left-cluster"><div class="mini-label">EVOLUTION <b id="evo">01</b></div><div class="segments" id="lifeSegments" aria-label="evolution health"></div></div>
+      <div class="left-cluster">
+        <div class="sync-line"><div class="mini-label">SYNC <b id="sync">38%</b></div><div class="sync-meter"><i id="syncFill"></i></div></div>
+        <div class="mini-label evolution-label">EVOLUTION <b id="evo">03</b></div><div class="segments" id="lifeSegments" aria-label="evolution health"></div>
+      </div>
       <div class="lock-cluster"><div class="lock-ring"><span id="locks">0</span><small>/8</small></div><div class="mini-label">LOCK ARRAY</div></div>
       <div class="right-cluster"><div class="mini-label">OVERDRIVE <b id="overdrivePct">0%</b></div><div class="meter"><i id="overdriveFill"></i></div></div>
     </div>
     <button id="overdriveBtn" class="overdrive-btn" aria-label="Trigger overdrive">OVERDRIVE</button>
     <div class="beat-readout"><span id="bpm">128 BPM</span><i id="beatLamp"></i></div>
   </div>
+  <div id="callout" class="callout" aria-hidden="true"></div>
   <div id="aim" class="aim hidden" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
   <div id="start" class="overlay">
     <div class="scanlines"></div>
     <div class="start-card">
       <div class="eyebrow">ORIGINAL BROWSER GAME · GENERATIVE AUDIOVISUAL SYSTEM</div>
       <h1>PULSE<span>//</span>ASCENT</h1>
-      <p class="lede">Paint targets. Hold to lock. Release and your attack is quantized into the music.</p>
-      <div class="instructions"><div><b>01</b><span><strong>DRAG</strong> to aim</span></div><div><b>02</b><span><strong>HOLD</strong> to collect up to 8 locks</span></div><div><b>03</b><span><strong>RELEASE</strong> to fire on the beat</span></div></div>
+      <p class="lede">Paint targets. Hold to lock. Release near the rhythm grid to build SYNC and make the whole world perform with you.</p>
+      <div class="instructions"><div><b>01</b><span><strong>DRAG</strong> to aim</span></div><div><b>02</b><span><strong>HOLD</strong> up to 8 locks</span></div><div><b>03</b><span><strong>RELEASE ON BEAT</strong> to build SYNC</span></div></div>
       <button id="startBtn" class="start-btn"><span>INITIALIZE AUDIO CORE</span><small>HEADPHONES RECOMMENDED</small></button>
-      <div class="legal-note">Original code, procedural visuals and synthesized audio. No assets or music from Rez Infinite are used.</div>
+      <div class="legal-note">Original code, procedural visuals and synthesized audio. No game assets or music from Rez Infinite are used.</div>
     </div>
   </div>
   <div id="result" class="overlay hidden"><div class="result-card"><div class="eyebrow">TRANSMISSION COMPLETE</div><h2>NETWORK RESONANCE</h2><div class="result-grid"><div><span>SCORE</span><b id="finalScore">0</b></div><div><span>SHOT DOWN</span><b id="shotDown">0%</b></div><div><span>ANALYSIS</span><b id="analysis">0%</b></div><div><span>MAX CHAIN</span><b id="maxChain">0</b></div></div><button id="restartBtn" class="start-btn compact"><span>RE-ENTER NETWORK</span></button></div></div>
