@@ -39,7 +39,7 @@ jobs:
           if(!state.hud||!state.mission?.includes('BUILD SYNC')||!['D','C','B','A','S','S+'].includes(state.rank))throw new Error(`Initial progression invalid: ${JSON.stringify(state)}`);
           await page.evaluate(()=>{window.__pulseAscent.sync=60;});await page.waitForTimeout(350);
           state=await page.evaluate(()=>({stats:window.__pulseProgression.stats(),score:window.__pulseAscent.score,complete:document.querySelector('.mission')?.classList.contains('complete')}));
-          if(!state.complete||!state.stats.completed.includes(0)||state.score<750)throw new Error(`Directive reward invalid: ${JSON.stringify(state)}`);
+          if(!state.complete||!state.stats.completed.some(v=>v.includes('BUILD SYNC'))||state.score<750)throw new Error(`Directive reward invalid: ${JSON.stringify(state)}`);
           await page.evaluate(()=>window.__pulseAscent.setSection(3,'RUPTURE // FREE VECTOR'));await page.waitForTimeout(80);
           const rupture=await page.evaluate(()=>window.__pulseProgression.stats());if(!rupture.mission.includes('RUPTURE CLEAR'))throw new Error(`Rupture directive invalid: ${JSON.stringify(rupture)}`);
           await page.evaluate(()=>window.__pulseAscent.setSection(3,'ASCENSION // REENTRY'));await page.waitForTimeout(80);
