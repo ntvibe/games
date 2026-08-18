@@ -15,6 +15,11 @@ waitFor().then(game=>{
       const o=game.scene.getObjectByName(name);
       if(o)o.visible=false;
     }
+    // Once the connected topology worlds are available, retire the obvious primitive
+    // boxes/cones/toruses/polyhedra from the older generative architecture layer.
+    const primitiveArch=game.scene.getObjectByName('generative-architecture');
+    if(primitiveArch&&window.__pulseTopologyWorlds)primitiveArch.visible=false;
+
     const old=window.__cinematicEvolution;
     if(old?.setpieces?.root)old.setpieces.root.visible=false;
     if(old?.pilot?.root)old.pilot.root.visible=false;
@@ -29,16 +34,12 @@ waitFor().then(game=>{
   game.world.update=(dt,t,energy,sync=0)=>{
     baseUpdate(dt,t,energy,sync);
     prune();
-    const gen=window.__pulseGenerativeDirector;
+    const topology=window.__pulseTopologyWorlds;
     const area=clamp((window.__pulseCampaign?.state?.selected||1)-1,0,4);
-    const group=gen?.arch?.groups?.[area];
-    if(group){
-      // Keep the authored architecture legible: no translucent wall slabs crossing the camera.
-      for(const child of group.children){
-        if(!child?.material)continue;
-        child.material.depthWrite=false;
-        child.material.opacity=Math.min(child.material.opacity??.1,.18);
-      }
+    const world=topology?.worlds?.[area];
+    if(world){
+      world.mat.opacity=Math.min(world.mat.opacity??.12,.18);
+      world.packetMat.opacity=Math.min(world.packetMat.opacity??.7,.82);
     }
   };
 
