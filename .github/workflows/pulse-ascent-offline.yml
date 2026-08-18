@@ -1,0 +1,52 @@
+name: Pulse Ascent Offline Package
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-offline.yml'
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pinned Three.js runtime
+        run: npm install --prefix .offline-deps --no-save three@0.185.0
+
+      - name: Build offline folder
+        run: node pulse-ascent/package-offline.mjs
+
+      - name: Verify local-only runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/pulse-ascent-offline/vendor/three.module.js
+          test -f dist/pulse-ascent-offline/vendor/addons/postprocessing/EffectComposer.js
+          ! grep -R "cdn.jsdelivr.net/npm/three" dist/pulse-ascent-offline
+          find dist/pulse-ascent-offline -name '*.js' -not -path '*/vendor/*' -print0 | xargs -0 -n1 node --check
+
+      - name: Create ZIP
+        run: |
+          cd dist
+          zip -qr pulse-ascent-offline.zip pulse-ascent-offline
+          sha256sum pulse-ascent-offline.zip > pulse-ascent-offline.zip.sha256
+
+      - name: Upload offline package
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-offline
+          path: |
+            dist/pulse-ascent-offline.zip
+            dist/pulse-ascent-offline.zip.sha256
+          retention-days: 30
