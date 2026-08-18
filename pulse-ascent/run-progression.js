@@ -21,15 +21,15 @@ function addResultSummary(){
   const summary=document.createElement('div');summary.id='runSummary';summary.className='run-summary';summary.innerHTML=`<div class="grade"><span>RANK</span><b id="finalRank">C</b></div><div><span>PERFECT</span><b id="finalPerfect">0%</b></div><div><span>DAMAGE</span><b id="finalDamage">0</b></div><div><span>BEST</span><b id="finalBest">0</b></div>`;grid.insertAdjacentElement('afterend',summary);
 }
 
-function missionFor(section,game,state){
+function missionFor(section,name,game,state){
   const start={sync:game.sync,perfect:game.perfectReleases,kills:game.kills,maxCombo:game.maxCombo,damage:state.damageTaken,score:game.score};state.sectorStart=start;
+  if(name?.includes('RUPTURE'))return {name:'RUPTURE CLEAR // 10 KILLS',progress:()=>(game.kills-start.kills)/10};
+  if(name?.includes('ASCENSION'))return {name:'ASCEND // 78% SYNC',progress:()=>game.sync/78};
+  if(section>=4||name?.includes('CONVERGENCE'))return {name:'BREAK CONVERGENCE',progress:()=>game.boss?1-game.boss.healthRatio():0};
   const defs=[
     {name:'BUILD SYNC // 60%',progress:()=>game.sync/60},
     {name:'CHAIN DRIVE // ×3.0',progress:()=>game.mult/3},
-    {name:'PERFECT GRID // 3 RELEASES',progress:()=>(game.perfectReleases-start.perfect)/3},
-    {name:'RUPTURE CLEAR // 10 KILLS',progress:()=>(game.kills-start.kills)/10},
-    {name:'ASCEND // 78% SYNC',progress:()=>game.sync/78},
-    {name:'BREAK CONVERGENCE',progress:()=>game.boss?1-game.boss.healthRatio():0}
+    {name:'PERFECT GRID // 3 RELEASES',progress:()=>(game.perfectReleases-start.perfect)/3}
   ];
   return defs[Math.max(0,Math.min(defs.length-1,section))];
 }
@@ -49,18 +49,18 @@ async function init(){
   const ui={rank:document.querySelector('#liveRank'),rankFill:document.querySelector('#rankFill'),mission:document.querySelector('.mission'),missionText:document.querySelector('#missionText'),missionProgress:document.querySelector('#missionProgress'),missionFill:document.querySelector('#missionFill'),best:document.querySelector('#personalBest')};
   const state={damageTaken:0,threatIntercepts:0,completed:new Set(),mission:null,sectorStart:null,best:safeRead(),lastUi:0};
   const refreshBest=()=>{if(ui.best)ui.best.textContent=String(state.best.score||0).padStart(6,'0')};refreshBest();
-  const setMission=section=>{state.mission=missionFor(section,game,state);ui.mission?.classList.remove('complete');if(ui.missionText)ui.missionText.textContent=state.mission.name};setMission(game.section||0);
+  const setMission=(section,name='')=>{state.mission=missionFor(section,name,game,state);ui.mission?.classList.remove('complete');if(ui.missionText)ui.missionText.textContent=state.mission.name};setMission(game.section||0,document.querySelector('#sectionName')?.textContent||'');
   const completeMission=()=>{const key=game.section;if(state.completed.has(key))return;state.completed.add(key);game.score+=750+key*250;game.overdrive=clamp(game.overdrive+12,0,100);game.sync=clamp(game.sync+4,0,100);ui.mission?.classList.add('complete');game.showCallout?.('DIRECTIVE COMPLETE // BONUS',1);game.haptic?.([8,7,16]);game.updateHud?.()};
   const update=()=>{
     const p=performance(game,state);if(ui.rank)ui.rank.textContent=p.rank;if(ui.rankFill)ui.rankFill.style.width=`${p.score}%`;
     const m=state.mission?clamp(state.mission.progress(),0,1):0;if(ui.missionProgress)ui.missionProgress.textContent=`${Math.round(m*100)}%`;if(ui.missionFill)ui.missionFill.style.width=`${m*100}%`;if(m>=1)completeMission();
   };
 
-  const baseSetSection=game.setSection?.bind(game);if(baseSetSection)game.setSection=(i,name)=>{baseSetSection(i,name);setMission(i);update()};
+  const baseSetSection=game.setSection?.bind(game);if(baseSetSection)game.setSection=(i,name)=>{baseSetSection(i,name);setMission(i,name);update()};
   const baseScoreTiming=game.scoreTiming.bind(game);game.scoreTiming=(q,count)=>{baseScoreTiming(q,count);update()};
   const baseDestroyed=game.onEnemyDestroyed.bind(game);game.onEnemyDestroyed=enemy=>{if(enemy?.type==='danger')state.threatIntercepts++;baseDestroyed(enemy);update()};
   const baseTakeHit=game.takeHit.bind(game);game.takeHit=()=>{state.damageTaken++;baseTakeHit();update()};
-  const baseRestart=game.restart.bind(game);game.restart=()=>{state.damageTaken=0;state.threatIntercepts=0;state.completed.clear();baseRestart();setMission(0);update()};
+  const baseRestart=game.restart.bind(game);game.restart=()=>{state.damageTaken=0;state.threatIntercepts=0;state.completed.clear();baseRestart();setMission(0,'AWAKENING');update()};
   const baseFinish=game.finish.bind(game);game.finish=()=>{
     const p=performance(game,state),score=Math.floor(game.score),previous=state.best.score||0,isBest=score>previous;
     if(isBest){state.best={score,rank:p.rank,date:new Date().toISOString()};safeWrite(state.best);refreshBest()}
