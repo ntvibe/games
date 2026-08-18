@@ -128,8 +128,9 @@ function installThreatVisual(enemy){
   enemy.mesh.rotation.set(0,0,0);
   if(enemy.warning){enemy.warning.geometry.dispose();enemy.warning.geometry=new THREE.RingGeometry(.58,.66,8);enemy.warning.material.color.set(0xff315f);enemy.warning.rotation.set(0,0,Math.PI/8);enemy.warning.material.depthTest=false;}
   const trailGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,-.2),new THREE.Vector3(0,0,-4.2)]),trailMat=new THREE.LineBasicMaterial({color:0xff315f,transparent:true,opacity:.42,blending:THREE.AdditiveBlending,depthWrite:false}),trail=new THREE.Line(trailGeo,trailMat);enemy.group.add(trail);enemy.threatTrail=trail;
-  const brackets=new THREE.Group();for(let i=0;i<4;i++){const b=wire(new THREE.BoxGeometry(.24,.035,.035),0xff6b83,.72);b.position.set(Math.cos(i*TAU/4)*.78,Math.sin(i*TAU/4)*.78,0);b.rotation.z=i*TAU/4;括acketsFix:0;}
-  // Explicit octagonal threat silhouette: never confuse this with a normal lock target.
+  const brackets=new THREE.Group();
+  for(let i=0;i<4;i++){const b=wire(new THREE.BoxGeometry(.24,.035,.035),0xff6b83,.72);b.position.set(Math.cos(i*TAU/4)*.78,Math.sin(i*TAU/4)*.78,0);b.rotation.z=i*TAU/4;brackets.add(b);}
+  enemy.group.add(brackets);enemy.threatBrackets=brackets;
   const cage=wire(new THREE.OctahedronGeometry(.72,0),0xff315f,.24);cage.scale.z=.35;enemy.group.add(cage);enemy.threatCage=cage;
 }
 
