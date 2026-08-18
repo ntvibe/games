@@ -68,6 +68,10 @@ export function applyPass12(root){
     overlays.visible=!debug
   };
   const meta=root.userData.sculptRuntime||{};
-  meta.version='ship-forge-v5-pass12';meta.sections={...(meta.sections||{}),surface12:overlays};meta.confidence={...(meta.confidence||{}),visibleSide:.972,rear:.89,hiddenSide:.74,underside:.66};meta.inferred=[...(meta.inferred||[]),'surface wear and heat/soot placement inferred from spacecraft function rather than directly visible source evidence'];meta.surface={proceduralRoughness:true,texturedMeshes:textured,materialVariants:variants,debugMode:'roughness/metalness proxy'};root.userData.sculptRuntime=meta;
+  const currentRank=Number(meta.version?.match(/ship-forge-v(\d+)/)?.[1]||0);
+  if(currentRank<5)meta.version='ship-forge-v5-pass12';
+  meta.sections={...(meta.sections||{}),surface12:overlays};
+  const c=meta.confidence||{};meta.confidence={...c,visibleSide:Math.max(c.visibleSide||0,.972),rear:Math.max(c.rear||0,.89),hiddenSide:Math.max(c.hiddenSide||0,.74),underside:Math.max(c.underside||0,.66)};
+  meta.inferred=[...(meta.inferred||[]),'surface wear and heat/soot placement inferred from spacecraft function rather than directly visible source evidence'];meta.surface={proceduralRoughness:true,texturedMeshes:textured,materialVariants:variants,debugMode:'roughness/metalness proxy'};root.userData.sculptRuntime=meta;
   root.userData.pass12={setDebug,get debug(){return debug},stats:{textured,variants},maps};return root.userData.pass12
 }
