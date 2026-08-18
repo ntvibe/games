@@ -50,7 +50,7 @@ async function init(){
   const state={damageTaken:0,threatIntercepts:0,completed:new Set(),mission:null,sectorStart:null,best:safeRead(),lastUi:0};
   const refreshBest=()=>{if(ui.best)ui.best.textContent=String(state.best.score||0).padStart(6,'0')};refreshBest();
   const setMission=(section,name='')=>{state.mission=missionFor(section,name,game,state);ui.mission?.classList.remove('complete');if(ui.missionText)ui.missionText.textContent=state.mission.name};setMission(game.section||0,document.querySelector('#sectionName')?.textContent||'');
-  const completeMission=()=>{const key=game.section;if(state.completed.has(key))return;state.completed.add(key);game.score+=750+key*250;game.overdrive=clamp(game.overdrive+12,0,100);game.sync=clamp(game.sync+4,0,100);ui.mission?.classList.add('complete');game.showCallout?.('DIRECTIVE COMPLETE // BONUS',1);game.haptic?.([8,7,16]);game.updateHud?.()};
+  const completeMission=()=>{const key=`${game.section}:${state.mission?.name||''}`;if(state.completed.has(key))return;state.completed.add(key);game.score+=750+game.section*250;game.overdrive=clamp(game.overdrive+12,0,100);game.sync=clamp(game.sync+4,0,100);ui.mission?.classList.add('complete');game.showCallout?.('DIRECTIVE COMPLETE // BONUS',1);game.haptic?.([8,7,16]);game.updateHud?.()};
   const update=()=>{
     const p=performance(game,state);if(ui.rank)ui.rank.textContent=p.rank;if(ui.rankFill)ui.rankFill.style.width=`${p.score}%`;
     const m=state.mission?clamp(state.mission.progress(),0,1):0;if(ui.missionProgress)ui.missionProgress.textContent=`${Math.round(m*100)}%`;if(ui.missionFill)ui.missionFill.style.width=`${m*100}%`;if(m>=1)completeMission();
