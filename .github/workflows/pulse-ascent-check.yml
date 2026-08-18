@@ -16,9 +16,15 @@ jobs:
       - name: Check module syntax
         run: |
           for f in pulse-ascent/*.js; do node --check --input-type=module < "$f"; done
-      - name: Check required files
+      - name: Check required files and boss integration
         run: |
           test -s pulse-ascent/index.html
           test -s pulse-ascent/style.css
           test -s pulse-ascent/game.js
+          test -s pulse-ascent/boss-vulnerability.js
+          test -s pulse-ascent/boss-consequences.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
+          grep -q "boss-vulnerability.js" pulse-ascent/index.html
+          grep -q "boss-consequences.js" pulse-ascent/index.html
+          grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
+          grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
