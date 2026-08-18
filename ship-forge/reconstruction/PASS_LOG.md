@@ -16,37 +16,46 @@ This folder follows the img2threejs reconstruction philosophy: code-only geometr
 10. **Hierarchical detail refinement** — dedicated `10-pass10-detail` system with engine cages, cockpit internals, avionics, service trunks, pistons, asymmetric rear plumbing, weapon installation hardware, underside trays and locator emitters.
 11. **Macro shell reconstruction** — dedicated `11-pass11-macro-shells` system with segmented engine cowls, continuous cockpit-to-dorsal armor flow, unified rear propulsion bridge, authored side armor, dorsal command geometry and deliberate port/starboard asymmetry. Solid convex cowl fillers are disabled so engine negative space stays visible.
 12. **Surface realism** — dedicated runtime `pass12-surface.js` system with procedural roughness/micro-bump maps for UV-capable meshes, deterministic per-mesh material variation, heat bands, soot overlays, edge scuffs and a material-debug inspection mode.
-13. **Reference proportion correction** — dedicated `pass13-reference.js` pass that moves back to large-form accuracy: narrows and lengthens the spear nose, lowers/slopes the canopy, flattens the cockpit-to-dorsal stack, tapers and separates the engine cowls, opens rear negative space, pulls side armor inward and adds a dedicated flat silhouette inspection mode.
-14. **Reference likeness + cinematic explode** — dedicated `pass14-likeness-explode.js` pass that further lengthens the spear, tightens canopy/cheek armor, flattens the upper profile, elongates/separates propulsion pods and adds sparse reference-specific rear/canopy shapes. It also replaces the old binary explode jump with a deterministic two-second staggered animation controller.
+13. **Reference proportion correction** — dedicated `pass13-reference.js` pass that narrows/lengthens the spear nose, lowers/slopes the canopy, flattens the cockpit-to-dorsal stack, tapers/separates engine cowls, opens rear negative space and adds a flat silhouette inspection mode.
+14. **Reference likeness + cinematic explode** — dedicated `pass14-likeness-explode.js` pass that pushes visible proportions closer to the source and replaces the binary explode jump with a deterministic two-second staggered animation for major systems and selected nested assemblies.
+15. **Phone-first viewer + full-detail explode** — dedicated `pass15-mobile-refine.js` pass that sharpens the visible silhouette again, adds restrained reference-specific armor/rail/engine accents, removes the floor/grid from the viewer, collapses all controls behind a single floating menu, adds double-tap explode and upgrades the explode controller to include major groups, medium assemblies and individual visible meshes.
 
-## Pass 14 outcome
+## Pass 15 outcome
 
-- Nose and canopy proportions are pushed another step toward the source: longer spear, slightly narrower/lower front mass, tighter cheek armor and a thinner canopy brow that preserves the dark faceted glass instead of covering it with a solid shell.
-- Added reference-specific cheek blades, canopy side frames and red cheek accents to strengthen the visible front-quarter identity.
-- Cockpit-to-dorsal bridge and command shell are lowered again slightly so the top line stays flatter before the mast/sensor region.
-- All four macro engine groups are stretched longitudinally and tightened vertically/laterally, with additional spacing so the rear reads as distinct propulsion pods rather than one filled block.
-- Rear propulsion spine/shoulder and side macro armor are compressed subtly to preserve stronger mechanical negative spaces.
-- Added sparse rear fin caps, red fin accents, rear braces and engine red strakes without filling the open gaps.
-- Runtime version is now `ship-forge-v7-pass14`; visible-side reconstruction confidence is 98.4%, rear 91.5%, hidden side 75%, underside 66%. These remain qualitative reconstruction-confidence labels rather than measured geometric accuracy.
+- Nose/front silhouette receives another small correction toward a longer, sharper spear with a thinner `15-nose-needle` extension rather than another bulky shell.
+- Canopy remains visually exposed while thin side cowls and rails tighten the frame around the glass.
+- Cheek armor, red cuts, engine trusses/strakes and sparse spine slits add authored reference cues without filling the negative space created in Passes 13–14.
+- Main engine macro groups are stretched and narrowed slightly again, with small spacing adjustments so propulsion pods stay distinct.
+- Runtime version is now `ship-forge-v8-pass15`; visible-side reconstruction confidence is 98.7%, rear 92.2%, hidden side 75.2%, underside 66%. These are qualitative reconstruction-confidence labels, not measured geometric accuracy.
 
-### Cinematic explode behavior
+### Full-detail explode behavior
 
-- `Explode` now animates instead of jumping.
-- Full transition duration is **2.0 seconds** in either direction.
-- Uses a cubic ease-in/out curve for smooth acceleration/deceleration.
-- Major systems receive deterministic pseudo-random timing profiles derived from their names, so the effect is stable between clicks rather than using frame-by-frame randomness.
-- Each target gets a different delay, perceived speed, distance multiplier and small rotational drift.
-- Cockpit travels forward, port/starboard systems peel outward, engines pull strongly rearward, dorsal systems lift upward and weapons drop/spread away from the hull.
-- Selected nested assemblies — the four base engines, four Pass 11 macro cowls, turrets and dorsal command shell — receive secondary motion on top of their parent section, producing a more dramatic layered disassembly.
-- Tapping Explode again while the animation is still running reverses smoothly from the current progress instead of popping to a new state.
-- The controller is installed after Pass 12 so it supersedes all older immediate explode wrappers while still animating the Pass 12 surface overlay group.
-- CI now syntax-checks `pass14-likeness-explode.js` alongside the earlier procedural passes.
+- Explode remains a **2.0 second** smooth eased transition and still reverses cleanly from mid-animation.
+- The controller now collects the final assembled hierarchy after the surface pass and assigns three deterministic motion tiers:
+  - **primary** major section groups with the largest travel,
+  - **secondary** nested assemblies with medium travel,
+  - **tertiary** individual visible meshes with smaller local drift and rotation.
+- Small meshes receive their own deterministic delay, speed, distance, direction jitter and rotation drift, so the ship no longer separates as only a handful of large blocks.
+- Parent and child motion intentionally compound to create a layered exploded-engineering-diagram effect while keeping tertiary travel much shorter than major-system travel.
+- Instanced fasteners remain one instanced target rather than expanding every instance into a separate object, preserving mobile performance.
+- Runtime metadata exposes total explode target count and major/assembly/small-part counts.
+
+### Phone / fullscreen viewer
+
+- Removed the circular floor and grid helper entirely; only the ship, environment and lights remain.
+- Viewer fills `100dvh` and defaults to a clean scene with no persistent HUD over the model.
+- All controls are hidden behind one floating hamburger/menu button; the control panel is closed on load.
+- Added a **Fullscreen** control using the browser Fullscreen API where supported.
+- Added desktop double-click and mobile/pen double-tap detection directly on the renderer canvas to toggle explode without opening the menu.
+- Touch double-tap detection rejects gestures that moved more than 12 px, reducing accidental explode triggers while orbiting.
+- Mobile pixel ratio is capped at 1.5 and shadow-map resolution at 512 to keep the more complex explode hierarchy responsive on phone.
+- Panning is disabled on mobile while orbit/pinch zoom remain available.
+- CI now syntax-checks `pass15-mobile-refine.js` alongside all previous procedural modules.
 
 ## Next refinement targets
 
-- Add an automated browser render workflow that captures exact **Ref pose beauty + Silhouette** screenshots as GitHub Actions artifacts. This is now the highest-value next step because further reference-likeness work should be driven by actual visual comparisons rather than another blind geometry pass.
-- Use those captures to tune only the largest remaining differences in canopy angle/visibility, nose length, engine cowl spacing/taper and rear negative-space silhouette.
-- Consider a dedicated per-child explode profile for a few additional high-value mechanical subassemblies only if the current animation still feels too block-based; avoid animating every greeble or fastener.
-- Once reference-pose macro errors become small, tune selective engine heat-metal behavior and exposed-steel anisotropy rather than adding more geometry.
+- Add an automated browser-render workflow that captures exact **Ref pose beauty + Silhouette** screenshots as GitHub Actions artifacts; further likeness work should now be driven by actual rendered comparison rather than blind proportion tweaks.
+- Add a mobile screenshot/smoke-test capture at a representative phone viewport so menu, reference panel, double-tap and exploded state can be visually checked in CI.
+- If the full-detail explode proves too expensive on lower-end phones, add a mobile detail budget that samples tertiary targets deterministically while preserving the same visual rhythm.
+- Once reference-pose macro errors are small, tune selective heat-metal/anisotropy behavior instead of adding more geometry.
 - Add GLB export/bake tooling once the silhouette stops changing, keeping procedural source code as the editable master.
-- If additional top/rear/underside references become available, replace inferred geometry instead of refining guesses indefinitely.
