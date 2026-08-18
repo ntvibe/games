@@ -22,6 +22,7 @@ jobs:
           node --check ship-forge/pass14-likeness-explode.js
           node --check ship-forge/pass15-mobile-refine.js
           node --check ship-forge/pass16-reference-microexplode.js
+          node --check ship-forge/pass17-reference-fidelity-glow.js
       - name: Fetch img2threejs pipeline
         run: git clone --depth 1 https://github.com/img2threejs/img2threejs.git /tmp/img2threejs
       - name: Probe reference with img2threejs
