@@ -12,22 +12,26 @@ This folder follows the img2threejs reconstruction philosophy: code-only geometr
 6. **Surface** — procedural panel arrays, ribs, vents, fasteners and greebles.
 7. **Underside** — deliberately marked lower-confidence because the source does not show it directly.
 8. **Material / lighting / interaction** — PBR material classes, red/orange emitters, animated engine pulse, explode/wireframe/reference inspection tools.
-9. **Integrated hard-surface refinement** — replaced much of the box-like kitbash language with chamfered convex armor, layered shoulder/rear caps, deeper vent banks, connected mechanical rails, more complex engine shrouds, canopy framing, seam breaks, dorsal cable runs and a central reactor detail. Viewer now has brighter studio-style lighting and a dedicated reference pose for silhouette comparison.
+9. **Integrated hard-surface refinement** — replaced much of the box-like kitbash language with chamfered convex armor, layered shoulder/rear caps, deeper vent banks, connected mechanical rails, more complex engine shrouds, canopy framing, seam breaks, dorsal cable runs and a central reactor detail.
+10. **Hierarchical detail refinement** — added a dedicated `10-pass10-detail` system with engine cages, nested shrouds, cockpit internals, nose sensors, avionics modules, side service trunks, pistons, nested vents, asymmetric rear plumbing, weapon installation brackets, recoil hardware, underside service trays, hardpoints, latches and additional locator emitters.
 
-## Pass 09 outcome
+## Pass 10 outcome
 
-- More pointed and layered nose/cockpit construction.
-- Heavier rear propulsion mass with nested bells, shrouds, collars and plumbing.
-- Side armor reads as connected manufactured assemblies rather than isolated blocks.
-- Mechanical channels now include linked cylinders, collars, pipes, vents and status emitters.
-- Added a ninth named `refinement` system so future iterations can be isolated and exploded independently.
-- Visible-side reconstruction confidence raised to 94%; underside remains intentionally conservative at 60% because it is inferred from one image.
+- Engine areas now have a stronger sense of layered construction: inner cores, bells, multiple ring stages, external cages, shrouds, support struts and asymmetric service plumbing.
+- Cockpit/nose received internal frame lines, brow armor, cheek venting and sensor pods so the front reads less like a simple canopy embedded in a wedge.
+- Side detail was reorganized into connected service trunks with pistons, collars, branch pipes and nested vent banks rather than isolated greebles.
+- Dorsal detail now includes a small avionics/antenna cluster with locator lights.
+- Weapon systems gained clearer mounting and recoil hardware so they look installed into the airframe.
+- Underside received service trays and hardpoint geometry while remaining explicitly lower-confidence.
+- Added 28 fine latch/locator motifs to make small-scale detail feel repeated and authored rather than random.
+- Viewer lighting and the reference camera were adjusted so the new dark-on-dark geometry reads more clearly.
+- Runtime version is now `ship-forge-v3-pass10` with visible-side confidence at 95.5%, rear at 82%, hidden side at 71%, and underside at 63%.
 
 ## Next refinement targets
 
-- Push exact top-profile silhouette around the cockpit-to-dorsal transition.
-- Build larger custom convex engine housings instead of relying on cylindrical cores plus accessory plates.
-- Introduce controlled asymmetry in exposed machinery so the ship feels authored rather than mirrored.
-- Add procedural roughness/wear masks and edge breakup after the macro geometry is stable.
-- Add optional GLB export/bake tooling so a mature procedural pass can be shipped as a conventional game asset.
+- Replace the largest remaining box/chamfer rear housings with custom convex macro shells shaped directly around the four engines.
+- Improve the cockpit-to-dorsal transition as one continuous sculpted armor flow rather than several overlapping modules.
+- Add selected controlled asymmetry to port/starboard surface clusters, not only rear plumbing.
+- Introduce procedural roughness, edge wear and subtle surface breakup after macro geometry is stable.
+- Consider baking/exporting the procedural result to GLB once the silhouette and engine architecture stop changing.
 - If top/rear/underside references become available, replace inferred regions instead of decorating the guesses.
