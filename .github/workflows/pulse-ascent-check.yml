@@ -26,12 +26,14 @@ jobs:
           test -s pulse-ascent/elite-doctrine.js
           test -s pulse-ascent/doctrine-mastery.js
           test -s pulse-ascent/world-metamorphosis.js
+          test -s pulse-ascent/pilot-transformation.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
           grep -q "boss-vulnerability.js" pulse-ascent/index.html
           grep -q "boss-consequences.js" pulse-ascent/index.html
           grep -q "elite-doctrine.js" pulse-ascent/index.html
           grep -q "doctrine-mastery.js" pulse-ascent/index.html
           grep -q "world-metamorphosis.js" pulse-ascent/index.html
+          grep -q "pilot-transformation.js" pulse-ascent/index.html
           grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOCTRINE ACQUIRED" pulse-ascent/elite-doctrine.js
@@ -44,3 +46,6 @@ jobs:
           grep -q "WORLD RECOMPILE" pulse-ascent/world-metamorphosis.js
           grep -q "ShaderMaterial" pulse-ascent/world-metamorphosis.js
           grep -q "__worldMetamorphosis" pulse-ascent/world-metamorphosis.js
+          grep -q "FORM SHIFT" pulse-ascent/pilot-transformation.js
+          grep -q "__pilotTransformation" pulse-ascent/pilot-transformation.js
+          grep -q "makeTransformField" pulse-ascent/pilot-transformation.js
