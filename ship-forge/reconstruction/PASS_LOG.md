@@ -14,11 +14,12 @@ This folder follows the img2threejs reconstruction philosophy: code-only geometr
 8. **Material / lighting / interaction** — PBR material classes, red/orange emitters, animated engine pulse, explode/wireframe/reference inspection tools.
 9. **Integrated hard-surface refinement** — replaced much of the box-like kitbash language with chamfered convex armor, layered shoulder/rear caps, deeper vent banks, connected mechanical rails, more complex engine shrouds, canopy framing, seam breaks, dorsal cable runs and a central reactor detail.
 10. **Hierarchical detail refinement** — added a dedicated `10-pass10-detail` system with engine cages, nested shrouds, cockpit internals, nose sensors, avionics modules, side service trunks, pistons, nested vents, asymmetric rear plumbing, weapon installation brackets, recoil hardware, underside service trays, hardpoints, latches and additional locator emitters.
-11. **Macro shell reconstruction** — moved back up the hierarchy and rebuilt the biggest weak forms as a separate `11-pass11-macro-shells` module: bespoke convex engine cowls around all four thrusters, continuous cockpit-to-dorsal shoulder geometry, a unified rear propulsion bridge, integrated side armor, larger dorsal command shells, a longitudinal underside keel shell and intentionally different port/starboard hardware clusters.
+11. **Macro shell reconstruction** — moved back up the hierarchy and rebuilt the biggest weak forms as a separate `11-pass11-macro-shells` module: segmented convex engine cowls around all four thrusters, continuous cockpit-to-dorsal shoulder geometry, a unified rear propulsion bridge, integrated side armor, larger dorsal command shells, a longitudinal underside keel shell and intentionally different port/starboard hardware clusters.
 
 ## Pass 11 outcome
 
-- Four engines are now wrapped in custom convex outer cowls with upper/lower shells, lateral blades, lock rings, braces, vent fields and service lines rather than relying primarily on cylinders plus accessory plates.
+- Four engines are now wrapped in segmented custom convex cowl panels with upper/lower shells, lateral blades, lock rings, braces, vent fields and service lines rather than relying primarily on cylinders plus accessory plates.
+- A solid convex cowl volume is kept only as a construction helper and disabled in the viewer so it cannot bury the engine core; the visible housing is made from separated shell panels with readable negative space.
 - The cockpit-to-dorsal region now has a continuous bridge and cap that visually carries the canopy mass into the main spine instead of reading as several stacked modules.
 - A broad propulsion spine and rear shoulder shells connect the four thrusters into one coherent rear assembly.
 - Controlled asymmetry is now visible beyond plumbing: the port side carries an exposed thermal manifold/cooling hardware while starboard carries a more armored sensor installation.
