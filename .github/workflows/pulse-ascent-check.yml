@@ -24,12 +24,18 @@ jobs:
           test -s pulse-ascent/boss-vulnerability.js
           test -s pulse-ascent/boss-consequences.js
           test -s pulse-ascent/elite-doctrine.js
+          test -s pulse-ascent/doctrine-mastery.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
           grep -q "boss-vulnerability.js" pulse-ascent/index.html
           grep -q "boss-consequences.js" pulse-ascent/index.html
           grep -q "elite-doctrine.js" pulse-ascent/index.html
+          grep -q "doctrine-mastery.js" pulse-ascent/index.html
           grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOCTRINE ACQUIRED" pulse-ascent/elite-doctrine.js
           grep -q "GATE DOCTRINE ACQUIRED" pulse-ascent/elite-doctrine.js
           grep -q "RESONATOR DOCTRINE ACQUIRED" pulse-ascent/elite-doctrine.js
+          grep -q "THREAT PROFILE -15%" pulse-ascent/doctrine-mastery.js
+          grep -q "PHASE RECOVERY +18%" pulse-ascent/doctrine-mastery.js
+          grep -q "RHYTHM WINDOW +12%" pulse-ascent/doctrine-mastery.js
+          grep -q "__pulseDoctrineMastery" pulse-ascent/doctrine-mastery.js
