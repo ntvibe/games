@@ -13,7 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check procedural model syntax
-        run: node --check ship-forge/ship-model.js
+        run: |
+          node --check ship-forge/ship-model.js
+          node --check ship-forge/pass11.js
       - name: Fetch img2threejs pipeline
         run: git clone --depth 1 https://github.com/img2threejs/img2threejs.git /tmp/img2threejs
       - name: Probe reference with img2threejs
