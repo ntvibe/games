@@ -14,19 +14,19 @@ waitForGame().then(game=>{
     const morph=window.__worldMetamorphosis?.transition||0;
     const cinematic=clamp(Math.max(rush,morph),0,1);
 
-    // Keep luminous edges crisp instead of allowing large soft halos to wash out
-    // enemies, circuitry, pilot silhouette and threat telegraphs.
-    const maxStrength=mobile?.52+cinematic*.14:.72+cinematic*.18;
-    const maxRadius=mobile?.22+cinematic*.07:.34+cinematic*.09;
-    const minThreshold=mobile?.74-cinematic*.05:.64-cinematic*.05;
+    // Reserve bloom for highlights only. The game contains many additive materials,
+    // so even moderate bloom values can compound into white clipping on mobile OLED/LCD screens.
+    const maxStrength=mobile?.24+cinematic*.08:.36+cinematic*.12;
+    const maxRadius=mobile?.10+cinematic*.04:.16+cinematic*.05;
+    const minThreshold=mobile?.91-cinematic*.025:.84-cinematic*.035;
 
     game.bloom.strength=Math.min(game.bloom.strength,maxStrength);
     game.bloom.radius=Math.min(game.bloom.radius,maxRadius);
     game.bloom.threshold=Math.max(game.bloom.threshold,minThreshold);
 
-    // Several cinematic systems intentionally raise exposure. Preserve the punch,
-    // but prevent bright additive geometry from clipping into white on phone screens.
-    const exposureCap=mobile?1.28+cinematic*.08:1.42+cinematic*.1;
+    // Keep headroom for saturated colors and thin linework instead of flattening
+    // the scene into white masses during combat or transitions.
+    const exposureCap=mobile?1.08+cinematic*.035:1.18+cinematic*.05;
     game.renderer.toneMappingExposure=Math.min(game.renderer.toneMappingExposure,exposureCap);
 
     return baseRender(...args);
