@@ -25,7 +25,6 @@ function tuneReference(root,group){
   const changed=[];
   const tune=(name,s,m=[0,0,0],r=[0,0,0])=>{if(scaleNamed(root,name,s,m,r))changed.push(name)};
 
-  // Reference reads as a very long, low spear with the glass buried in cheek armor.
   tune('nose-primary',[1.035,.95,.91],[-.055,-.010,0],[0,0,-.008]);
   tune('nose-upper',[1.030,.93,.92],[-.035,-.020,0],[0,0,-.010]);
   tune('nose-center-ridge',[1.045,.92,.90],[-.040,-.018,0],[0,0,-.010]);
@@ -36,12 +35,10 @@ function tuneReference(root,group){
     tune(`nose-cheek-lower-${s}`,[1.03,.96,.94],[-.015,.006,-s*.016]);
   }
 
-  // The top line in the concept stays flatter before rising into the mast.
   tune('11-cockpit-dorsal-bridge',[1.018,.94,.96],[0,-.038,0],[0,0,-.006]);
   tune('11-cockpit-dorsal-cap',[1.02,.92,.95],[0,-.040,0],[0,0,-.006]);
   tune('11-dorsal-command-shell',[1.025,.93,.96],[-.018,-.035,0],[0,0,.006]);
 
-  // Engine pods in the reference are elongated mechanical barrels with strong gaps between them.
   for(let i=0;i<4;i++){
     const e=root.getObjectByName(`11-engine-macro-${i}`);if(!e)continue;
     const main=i<2,sg=Math.sign(e.position.z)||1;
@@ -59,28 +56,28 @@ function tuneReference(root,group){
     tune(`11-side-step-${s}`,[1.02,.96,.94],[.010,-.010,-s*.020]);
   }
 
-  // Reference-specific angular armor that makes the front read less generic.
   hull(group,'14-spear-knife',[
     [-.78,-.11,-.025],[-.78,-.11,.025],[-.78,.09,-.018],[-.78,.09,.018],
     [.68,-.20,-.19],[.68,-.20,.19],[.68,.16,-.15],[.68,.16,.15]
   ],[-6.38,-.09,0],M.graphite,[0,0,-.012]);
-  hull(group,'14-canopy-cowl',[
-    [-.78,-.16,-.42],[-.78,-.16,.42],[-.66,.20,-.34],[-.66,.20,.34],
-    [.60,-.15,-.50],[.60,-.15,.50],[.74,.18,-.42],[.74,.18,.42]
-  ],[-4.34,.72,0],M.armor,[0,0,-.030]);
+  hull(group,'14-canopy-brow',[
+    [-.78,-.06,-.42],[-.78,-.06,.42],[-.66,.10,-.35],[-.66,.10,.35],
+    [.60,-.05,-.48],[.60,-.05,.48],[.72,.08,-.40],[.72,.08,.40]
+  ],[-4.34,.84,0],M.graphite,[0,0,-.025]);
   for(const s of[-1,1]){
     hull(group,`14-cheek-blade-${s}`,[
       [-.62,-.22,-.18],[-.62,-.22,.18],[-.52,.19,-.15],[-.52,.19,.15],
       [.60,-.18,-.25],[.60,-.18,.25],[.70,.15,-.20],[.70,.15,.20]
     ],[-4.62,.08,s*.82],s>0?M.armorLight:M.armor,[0,s*.10,s*.012]);
+    tube(group,`14-canopy-sideframe-${s}`,[-5.10,.66,s*.29],[-3.92,.69,s*.43],.027,M.steel,8);
     box(group,`14-red-cheek-${s}`,[.92,.055,.17],[-4.02,.38,s*.87],M.red,[0,s*.09,0]);
     tube(group,`14-rear-open-brace-${s}`,[3.15,.58,s*.70],[4.05,.38,s*1.26],.027,M.steel,8);
     tube(group,`14-rear-open-brace2-${s}`,[3.18,-.30,s*.78],[4.00,-.43,s*1.31],.022,M.dark,8);
   }
-  // Sparse rear fins, keeping the reference's mechanical negative space open.
   for(const s of[-1,1]){
     hull(group,`14-rear-fin-cap-${s}`,[[-.62,-.10,-.10],[-.62,-.10,.10],[-.52,.34,-.08],[-.52,.34,.08],[.70,-.12,-.14],[.70,-.12,.14],[.78,.22,-.11],[.78,.22,.11]],[3.62,.78,s*1.50],M.graphite,[0,s*.10,s*.03]);
     box(group,`14-rear-fin-red-${s}`,[.72,.045,.13],[3.75,.91,s*1.56],M.red,[0,s*.10,0]);
+    box(group,`14-engine-red-strake-${s}`,[1.10,.045,.12],[3.60,.55,s*1.10],M.red,[0,s*.06,0]);
   }
   return changed;
 }
@@ -104,7 +101,7 @@ function makeProfile(o,index){
   const dir=base.add(jitter).normalize();
   const delay=.02+unit(h,0)*.31;
   const speed=.84+unit(h,8)*.44;
-  const distance=(1.85+unit(h,16)*1.80)*(o.userData?.pass14Secondary?.7:1);
+  const distance=(1.85+unit(h,16)*1.80)*(o.userData?.pass14Secondary ? .72 : 1);
   const rot=new THREE.Vector3((unit(h,4)-.5)*.22,(unit(h,12)-.5)*.28,(unit(h,20)-.5)*.22);
   return {o,basePos:o.position.clone(),baseRot:o.rotation.clone(),dir,delay,speed,distance,rot,index};
 }
@@ -113,7 +110,6 @@ function collectTargets(root,pass14){
   const sections=root.userData.sculptRuntime?.sections||{};
   for(const [key,o] of Object.entries(sections))if(o?.isObject3D&&o!==root){if(!o.name)o.name=key;unique.set(o.uuid,o)}
   unique.set(pass14.uuid,pass14);
-  // Secondary assemblies add the staggered 'some parts fly faster/slower' behavior without exploding every bolt.
   const names=['engine-0.1-0.8','engine-0.1--0.8','engine--0.5-1.42','engine--0.5--1.42','11-engine-macro-0','11-engine-macro-1','11-engine-macro-2','11-engine-macro-3','turret-1','turret--1','11-dorsal-command-shell'];
   for(const name of names){const o=root.getObjectByName(name);if(o&&!unique.has(o.uuid)){o.userData.pass14Secondary=true;unique.set(o.uuid,o)}}
   return [...unique.values()].filter(o=>o.parent);
@@ -123,7 +119,6 @@ function createExplodeController(root,pass14){
   let profiles=[];
   const state={current:0,from:0,target:0,startMs:0,durationMs:2000,active:false};
   const install=()=>{
-    // Capture final assembled transforms only after all prior passes have been applied.
     profiles=collectTargets(root,pass14).map(makeProfile);
     const previousTick=root.userData.tick;
     const apply=p=>{
