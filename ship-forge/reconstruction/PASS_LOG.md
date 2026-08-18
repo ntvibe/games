@@ -14,24 +14,26 @@ This folder follows the img2threejs reconstruction philosophy: code-only geometr
 8. **Material / lighting / interaction** — PBR material classes, red/orange emitters, animated engine pulse, explode/wireframe/reference inspection tools.
 9. **Integrated hard-surface refinement** — replaced much of the box-like kitbash language with chamfered convex armor, layered shoulder/rear caps, deeper vent banks, connected mechanical rails, more complex engine shrouds, canopy framing, seam breaks, dorsal cable runs and a central reactor detail.
 10. **Hierarchical detail refinement** — added a dedicated `10-pass10-detail` system with engine cages, nested shrouds, cockpit internals, nose sensors, avionics modules, side service trunks, pistons, nested vents, asymmetric rear plumbing, weapon installation brackets, recoil hardware, underside service trays, hardpoints, latches and additional locator emitters.
+11. **Macro shell reconstruction** — moved back up the hierarchy and rebuilt the biggest weak forms as a separate `11-pass11-macro-shells` module: bespoke convex engine cowls around all four thrusters, continuous cockpit-to-dorsal shoulder geometry, a unified rear propulsion bridge, integrated side armor, larger dorsal command shells, a longitudinal underside keel shell and intentionally different port/starboard hardware clusters.
 
-## Pass 10 outcome
+## Pass 11 outcome
 
-- Engine areas now have a stronger sense of layered construction: inner cores, bells, multiple ring stages, external cages, shrouds, support struts and asymmetric service plumbing.
-- Cockpit/nose received internal frame lines, brow armor, cheek venting and sensor pods so the front reads less like a simple canopy embedded in a wedge.
-- Side detail was reorganized into connected service trunks with pistons, collars, branch pipes and nested vent banks rather than isolated greebles.
-- Dorsal detail now includes a small avionics/antenna cluster with locator lights.
-- Weapon systems gained clearer mounting and recoil hardware so they look installed into the airframe.
-- Underside received service trays and hardpoint geometry while remaining explicitly lower-confidence.
-- Added 28 fine latch/locator motifs to make small-scale detail feel repeated and authored rather than random.
-- Viewer lighting and the reference camera were adjusted so the new dark-on-dark geometry reads more clearly.
-- Runtime version is now `ship-forge-v3-pass10` with visible-side confidence at 95.5%, rear at 82%, hidden side at 71%, and underside at 63%.
+- Four engines are now wrapped in custom convex outer cowls with upper/lower shells, lateral blades, lock rings, braces, vent fields and service lines rather than relying primarily on cylinders plus accessory plates.
+- The cockpit-to-dorsal region now has a continuous bridge and cap that visually carries the canopy mass into the main spine instead of reading as several stacked modules.
+- A broad propulsion spine and rear shoulder shells connect the four thrusters into one coherent rear assembly.
+- Controlled asymmetry is now visible beyond plumbing: the port side carries an exposed thermal manifold/cooling hardware while starboard carries a more armored sensor installation.
+- Pass 10 service trunks are partially buried under larger side armor steps, improving large/medium/small hierarchy and reducing the kitbash look.
+- Dorsal silhouette now uses fewer, larger authored shapes with a command shell and radar/probe cluster.
+- Underside gained a continuous keel shell and service doors. This remains explicitly inferred because the source image does not reveal the lower surface.
+- Pass 11 lives in its own `pass11.js` module so the macro-shell experiment can be iterated or removed without destabilizing the mature Pass 1–10 procedural asset.
+- Existing explode and tick handlers are wrapped rather than replaced, so Pass 11 participates in inspection and animation while preserving previous behavior.
+- Runtime version is now `ship-forge-v4-pass11`; confidence is 96.5% for the visible side, 87% rear, 73% hidden side and 65% underside. These are reconstruction-confidence labels, not measured geometric accuracy.
 
 ## Next refinement targets
 
-- Replace the largest remaining box/chamfer rear housings with custom convex macro shells shaped directly around the four engines.
-- Improve the cockpit-to-dorsal transition as one continuous sculpted armor flow rather than several overlapping modules.
-- Add selected controlled asymmetry to port/starboard surface clusters, not only rear plumbing.
-- Introduce procedural roughness, edge wear and subtle surface breakup after macro geometry is stable.
-- Consider baking/exporting the procedural result to GLB once the silhouette and engine architecture stop changing.
-- If top/rear/underside references become available, replace inferred regions instead of decorating the guesses.
+- Compare the new engine cowl silhouettes directly against the reference and tune their taper, separation and negative spaces before adding more detail.
+- Push the canopy glass/front armor proportions if the reference-pose comparison still shows a silhouette mismatch.
+- Introduce procedural roughness variation, subtle edge wear, soot and heat discoloration now that macro geometry is more stable.
+- Add an optional material-debug mode so roughness/metalness breakup can be inspected independently of lighting.
+- Add GLB export/bake tooling once the macro silhouette stops changing, keeping the procedural source as the editable master.
+- If additional top/rear/underside references become available, replace inferred regions rather than refining guesses indefinitely.
