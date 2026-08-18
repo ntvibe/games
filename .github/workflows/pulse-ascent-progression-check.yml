@@ -23,7 +23,7 @@ jobs:
         run: |
           python3 -m http.server 4173 > /tmp/pulse-progression-server.log 2>&1 &
           sleep 2
-      - name: Validate progression loop
+      - name: Validate progression and threat evasion loop
         run: |
           cat > /tmp/progression-check.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -34,9 +34,20 @@ jobs:
           const context=await browser.newContext({viewport:{width:1280,height:800}});const page=await context.newPage();
           page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
-          await page.click('#startBtn');await page.waitForFunction(()=>window.__pulseProgression&&window.__pulseAscent?.running,{timeout:12000});
-          let state=await page.evaluate(()=>({stats:window.__pulseProgression.stats(),hud:!!document.querySelector('#runProgression'),mission:document.querySelector('#missionText')?.textContent,rank:document.querySelector('#liveRank')?.textContent}));
-          if(!state.hud||!state.mission?.includes('BUILD SYNC')||!['D','C','B','A','S','S+'].includes(state.rank))throw new Error(`Initial progression invalid: ${JSON.stringify(state)}`);
+          await page.click('#startBtn');await page.waitForFunction(()=>window.__pulseProgression&&window.__pulseDodge&&window.__pulseAscent?.running,{timeout:12000});
+          let state=await page.evaluate(()=>({stats:window.__pulseProgression.stats(),hud:!!document.querySelector('#runProgression'),mission:document.querySelector('#missionText')?.textContent,rank:document.querySelector('#liveRank')?.textContent,dash:window.__pulseDodge.stats(),dashButton:!!document.querySelector('#phaseDash')}));
+          if(!state.hud||!state.mission?.includes('BUILD SYNC')||!['D','C','B','A','S','S+'].includes(state.rank)||!state.dashButton||!state.dash.ready)throw new Error(`Initial progression/dash invalid: ${JSON.stringify(state)}`);
+
+          const hitTest=await page.evaluate(()=>{const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];const before=g.evolution,p=g.world.avatar.position.clone(),pos=p.clone();pos.z=7.55;const e=g.spawnEnemy('danger',pos,1);e.threatStartX=p.x;e.threatStartY=p.y;e.threatTargetX=p.x;e.threatTargetY=p.y;e.speed=24;return{before,spatial:!!e.__spatialThreat};});
+          await page.waitForTimeout(140);
+          const hitAfter=await page.evaluate(()=>({evolution:window.__pulseAscent.evolution,dodge:window.__pulseDodge.stats()}));
+          if(!hitTest.spatial||hitAfter.evolution>=hitTest.before)throw new Error(`Spatial threat hit invalid: ${JSON.stringify({hitTest,hitAfter})}`);
+
+          const dodgeBefore=await page.evaluate(()=>{const g=window.__pulseAscent,d=window.__pulseDodge;d.state.lastAt=-99;g.pointer.x=1;g.pointer.y=0;const before=g.evolution,triggered=d.triggerDash(),p=g.world.avatar.position.clone(),pos=p.clone();pos.z=7.55;const e=g.spawnEnemy('danger',pos,1);e.threatStartX=p.x;e.threatStartY=p.y;e.threatTargetX=p.x;e.threatTargetY=p.y;e.speed=24;return{before,triggered};});
+          await page.waitForTimeout(140);
+          const dodgeAfter=await page.evaluate(()=>({evolution:window.__pulseAscent.evolution,score:window.__pulseAscent.score,stats:window.__pulseDodge.stats(),activeClass:document.querySelector('#phaseDash')?.classList.contains('active')}));
+          if(!dodgeBefore.triggered||dodgeAfter.evolution!==dodgeBefore.before||dodgeAfter.stats.dodges<1||dodgeAfter.score<360)throw new Error(`Phase dash evade invalid: ${JSON.stringify({dodgeBefore,dodgeAfter})}`);
+
           await page.evaluate(()=>{window.__pulseAscent.sync=60;});await page.waitForTimeout(350);
           state=await page.evaluate(()=>({stats:window.__pulseProgression.stats(),score:window.__pulseAscent.score,complete:document.querySelector('.mission')?.classList.contains('complete')}));
           if(!state.complete||!state.stats.completed.some(v=>v.includes('BUILD SYNC'))||state.score<750)throw new Error(`Directive reward invalid: ${JSON.stringify(state)}`);
@@ -49,9 +60,9 @@ jobs:
           if(!result.summary||result.stored!==12345||!result.best?.includes('12,345'))throw new Error(`Result persistence invalid: ${JSON.stringify(result)}`);
           await context.close();
           const mobile=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const mp=await mobile.newPage();
-          await mp.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await mp.tap('#startBtn');await mp.waitForFunction(()=>window.__pulseProgression&&window.__pulseAscent?.running,{timeout:12000});await mp.waitForTimeout(150);
-          const mobileState=await mp.evaluate(()=>{const r=document.querySelector('#runProgression').getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight],mission:document.querySelector('#missionText')?.textContent};});
-          if(mobileState.left<0||mobileState.right>390||mobileState.overflow[0]>1||mobileState.overflow[1]>1)throw new Error(`Mobile progression overflow: ${JSON.stringify(mobileState)}`);
-          await mobile.close();await browser.close();if(errors.length)throw new Error(errors.join('\n'));console.log(JSON.stringify({state,rupture,reentry,result,mobileState},null,2));
+          await mp.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await mp.tap('#startBtn');await mp.waitForFunction(()=>window.__pulseProgression&&window.__pulseDodge&&window.__pulseAscent?.running,{timeout:12000});await mp.waitForTimeout(150);
+          const mobileState=await mp.evaluate(()=>{const r=document.querySelector('#runProgression').getBoundingClientRect(),d=document.querySelector('#phaseDash').getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,dash:{left:d.left,right:d.right,top:d.top,bottom:d.bottom,width:d.width,height:d.height},overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight],mission:document.querySelector('#missionText')?.textContent};});
+          if(mobileState.left<0||mobileState.right>390||mobileState.dash.left<0||mobileState.dash.right>390||mobileState.dash.width<58||mobileState.dash.height<58||mobileState.overflow[0]>1||mobileState.overflow[1]>1)throw new Error(`Mobile progression/dash overflow: ${JSON.stringify(mobileState)}`);
+          await mobile.close();await browser.close();if(errors.length)throw new Error(errors.join('\n'));console.log(JSON.stringify({state,hitTest,hitAfter,dodgeBefore,dodgeAfter,rupture,reentry,result,mobileState},null,2));
           NODE
           node /tmp/progression-check.mjs
