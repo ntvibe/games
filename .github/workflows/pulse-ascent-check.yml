@@ -34,6 +34,7 @@ jobs:
           test -s pulse-ascent/topology-worlds.js
           test -s pulse-ascent/topology-morph.js
           test -s pulse-ascent/topology-combat.js
+          test -s pulse-ascent/enemy-art-direction.js
           test -s pulse-ascent/visual-pruning.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
           grep -q "boss-vulnerability.js" pulse-ascent/index.html
@@ -49,6 +50,7 @@ jobs:
           grep -q "topology-worlds.js" pulse-ascent/index.html
           grep -q "topology-morph.js" pulse-ascent/index.html
           grep -q "topology-combat.js" pulse-ascent/index.html
+          grep -q "enemy-art-direction.js" pulse-ascent/index.html
           grep -q "visual-pruning.js" pulse-ascent/index.html
           grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
@@ -80,5 +82,8 @@ jobs:
           grep -q "__pulseTopologyCombat" pulse-ascent/topology-combat.js
           grep -q "nearestSegment" pulse-ascent/topology-combat.js
           grep -q "Organic branching" pulse-ascent/topology-combat.js
+          grep -q "__pulseEnemyArtDirection" pulse-ascent/enemy-art-direction.js
+          grep -q "PCB elbows" pulse-ascent/enemy-art-direction.js
+          grep -q "NormalBlending" pulse-ascent/enemy-art-direction.js
           grep -q "generative-architecture" pulse-ascent/visual-pruning.js
-          grep -q "pulse-ascent-v5" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v6" pulse-ascent/service-worker.js
