@@ -60,9 +60,9 @@ async function init(){
     rewards:REWARDS,
     stats:()=>({
       acquired:[...state.acquired],
-      emitterImpactScale:state.acquired.has('EMITTER')?.85:1,
+      emitterImpactScale:state.acquired.has('EMITTER') ? .85 : 1,
       dashCooldown:dodge.state.cooldown,
-      rhythmAssist:state.acquired.has('RESONATOR')?state.timingBoost:0,
+      rhythmAssist:state.acquired.has('RESONATOR') ? state.timingBoost : 0,
       threatsCalibrated:state.threatsCalibrated
     })
   };
