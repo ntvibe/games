@@ -16,9 +16,7 @@ function noiseCanvas(size=128,seed=17,contrast=1){
   }
   ctx.putImageData(img,0,0);return c
 }
-function makeTex(canvas,repeat=5){
-  const t=new THREE.CanvasTexture(canvas);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(repeat,repeat);t.colorSpace=THREE.NoColorSpace;t.anisotropy=2;t.needsUpdate=true;return t
-}
+function makeTex(canvas,repeat=5){const t=new THREE.CanvasTexture(canvas);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(repeat,repeat);t.colorSpace=THREE.NoColorSpace;t.anisotropy=2;t.needsUpdate=true;return t}
 function makeSurfaceMaps(){return {rough:makeTex(noiseCanvas(128,41,1.35),6),fine:makeTex(noiseCanvas(128,97,1.7),11)}}
 function cloneMaterial(m,name,maps){
   if(!m||!m.isMaterial)return m;
@@ -29,14 +27,8 @@ function cloneMaterial(m,name,maps){
   if('metalness' in c)c.metalness=clamp((c.metalness??.8)+j*.055,.15,1);
   c.userData={...(c.userData||{}),pass12Original:m.uuid,pass12Roughness:c.roughness,pass12Metalness:c.metalness};c.needsUpdate=true;return c
 }
-function addHeatBand(g,name,pos,scale,rot=0){
-  const m=new THREE.MeshStandardMaterial({color:0x3a1610,emissive:0x170502,emissiveIntensity:.25,roughness:.58,metalness:.52,transparent:true,opacity:.26,depthWrite:false});
-  const mesh=new THREE.Mesh(new THREE.TorusGeometry(.62*scale,.085*scale,8,28),m);mesh.name=name;mesh.position.set(...pos);mesh.rotation.y=Math.PI/2;mesh.rotation.x=rot;g.add(mesh);return mesh
-}
-function addSootPatch(g,name,pos,size,rot=[0,0,0],opacity=.20){
-  const m=new THREE.MeshBasicMaterial({color:0x020304,transparent:true,opacity,depthWrite:false});
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(size[0],size[1]),m);mesh.name=name;mesh.position.set(...pos);mesh.rotation.set(...rot);g.add(mesh);return mesh
-}
+function addHeatBand(g,name,pos,scale,rot=0){const m=new THREE.MeshStandardMaterial({color:0x3a1610,emissive:0x170502,emissiveIntensity:.25,roughness:.58,metalness:.52,transparent:true,opacity:.26,depthWrite:false});const mesh=new THREE.Mesh(new THREE.TorusGeometry(.62*scale,.085*scale,8,28),m);mesh.name=name;mesh.position.set(...pos);mesh.rotation.y=Math.PI/2;mesh.rotation.x=rot;g.add(mesh);return mesh}
+function addSootPatch(g,name,pos,size,rot=[0,0,0],opacity=.20){const m=new THREE.MeshBasicMaterial({color:0x020304,transparent:true,opacity,depthWrite:false});const mesh=new THREE.Mesh(new THREE.PlaneGeometry(size[0],size[1]),m);mesh.name=name;mesh.position.set(...pos);mesh.rotation.set(...rot);g.add(mesh);return mesh}
 function addEdgeScuffs(g){
   const material=new THREE.MeshStandardMaterial({color:0x7b858e,roughness:.30,metalness:.92,transparent:true,opacity:.44,depthWrite:false});
   const specs=[[-4.92,.57,.73,1.08,.018,.028],[-4.35,.72,-.80,.88,.016,-.035],[-2.80,1.16,.62,.84,.018,.018],[-1.74,1.28,-.57,.70,.016,-.012],[.85,.78,1.42,.88,.016,.035],[1.72,.66,-1.48,.72,.016,-.030],[3.24,.89,1.34,.66,.018,.020],[3.58,.76,-1.32,.60,.018,-.018]];
@@ -46,28 +38,17 @@ function addSurfaceOverlays(root,thermal){
   const g=new THREE.Group();g.name='12-pass12-surface-overlays';root.add(g);
   const engines=[[4.10,.10,.80,.94],[4.10,.10,-.80,.94],[3.82,-.50,1.42,.63],[3.82,-.50,-1.42,.63]];
   engines.forEach(([x,y,z,s],i)=>{thermal.push(addHeatBand(g,`12-heat-band-${i}-a`,[x+.34*s,y,z],s));thermal.push(addHeatBand(g,`12-heat-band-${i}-b`,[x+.16*s,y,z],s*.90,.05*(i%2?1:-1)))});
-  addSootPatch(g,'12-soot-rear-port',[3.05,.80,1.56],[1.62,.48],[Math.PI/2,0,.10],.18);
-  addSootPatch(g,'12-soot-rear-star',[3.20,.76,-1.54],[1.42,.42],[Math.PI/2,0,-.08],.15);
-  addSootPatch(g,'12-soot-dorsal',[.42,1.20,.02],[1.15,.36],[-Math.PI/2,0,.03],.12);
-  addSootPatch(g,'12-soot-belly',[1.35,-1.13,.06],[1.48,.42],[Math.PI/2,0,.02],.14);
-  addEdgeScuffs(g);return g
+  addSootPatch(g,'12-soot-rear-port',[3.05,.80,1.56],[1.62,.48],[Math.PI/2,0,.10],.18);addSootPatch(g,'12-soot-rear-star',[3.20,.76,-1.54],[1.42,.42],[Math.PI/2,0,-.08],.15);addSootPatch(g,'12-soot-dorsal',[.42,1.20,.02],[1.15,.36],[-Math.PI/2,0,.03],.12);addSootPatch(g,'12-soot-belly',[1.35,-1.13,.06],[1.48,.42],[Math.PI/2,0,.02],.14);addEdgeScuffs(g);return g
 }
-function makeDebugMaterial(m){
-  const r='roughness' in m?m.roughness:.5,me='metalness' in m?m.metalness:0;
-  const c=new THREE.Color().setHSL(.58-me*.42,.72,.18+r*.50);return new THREE.MeshBasicMaterial({color:c,wireframe:false})
-}
+function makeDebugMaterial(m){const r='roughness' in m?m.roughness:.5,me='metalness' in m?m.metalness:0;const c=new THREE.Color().setHSL(.58-me*.42,.72,.18+r*.50);return new THREE.MeshBasicMaterial({color:c,wireframe:false})}
 
 export function applyPass12(root){
-  const maps=makeSurfaceMaps(),originals=new Map(),debugMats=new Map(),thermal=[];
+  const maps=makeSurfaceMaps(),originals=new Map(),enhanced=new Map(),debugMats=new Map(),thermal=[];
   let textured=0,variants=0;
   root.traverse(o=>{
     if(!o.isMesh||!o.material||o.name.startsWith('12-'))return;
     const arr=Array.isArray(o.material)?o.material:[o.material];
-    const next=arr.map((m,idx)=>{
-      originals.set(`${o.uuid}:${idx}`,m);
-      if(m.transparent||m.emissiveIntensity>1.5||m.transmission>0.02)return m;
-      const n=cloneMaterial(m,`${o.name}:${idx}`,o.geometry?.attributes?.uv?maps:null);variants++;if(n.roughnessMap)textured++;return n
-    });
+    const next=arr.map((m,idx)=>{const key=`${o.uuid}:${idx}`;originals.set(key,m);if(m.transparent||m.emissiveIntensity>1.5||m.transmission>0.02){enhanced.set(key,m);return m}const n=cloneMaterial(m,`${o.name}:${idx}`,o.geometry?.attributes?.uv?maps:null);enhanced.set(key,n);variants++;if(n.roughnessMap)textured++;return n});
     o.material=Array.isArray(o.material)?next:next[0]
   });
   const overlays=addSurfaceOverlays(root,thermal);
@@ -81,20 +62,12 @@ export function applyPass12(root){
     root.traverse(o=>{
       if(!o.isMesh||o.name.startsWith('12-'))return;
       const arr=Array.isArray(o.material)?o.material:[o.material];
-      if(debug){
-        const next=arr.map((m,idx)=>{const key=`${o.uuid}:${idx}`,src=originals.get(key)||m;if(!debugMats.has(key))debugMats.set(key,makeDebugMaterial(src));return debugMats.get(key)});
-        o.material=Array.isArray(o.material)?next:next[0]
-      }else{
-        const next=arr.map((m,idx)=>originals.get(`${o.uuid}:${idx}`)||m);
-        const restored=next.map((m,idx)=>m.transparent||m.emissiveIntensity>1.5||m.transmission>0.02?m:cloneMaterial(m,`${o.name}:${idx}`,o.geometry?.attributes?.uv?maps:null));
-        o.material=Array.isArray(o.material)?restored:restored[0]
-      }
+      if(debug){const next=arr.map((m,idx)=>{const key=`${o.uuid}:${idx}`,src=enhanced.get(key)||m;if(!debugMats.has(key))debugMats.set(key,makeDebugMaterial(src));return debugMats.get(key)});o.material=Array.isArray(o.material)?next:next[0]}
+      else{const restored=arr.map((m,idx)=>enhanced.get(`${o.uuid}:${idx}`)||originals.get(`${o.uuid}:${idx}`)||m);o.material=Array.isArray(o.material)?restored:restored[0]}
     });
     overlays.visible=!debug
   };
   const meta=root.userData.sculptRuntime||{};
-  meta.version='ship-forge-v5-pass12';meta.sections={...(meta.sections||{}),surface12:overlays};meta.confidence={...(meta.confidence||{}),visibleSide:.972,rear:.89,hiddenSide:.74,underside:.66};
-  meta.inferred=[...(meta.inferred||[]),'surface wear and heat/soot placement inferred from spacecraft function rather than directly visible source evidence'];
-  meta.surface={proceduralRoughness:true,texturedMeshes:textured,materialVariants:variants,debugMode:'roughness/metalness proxy'};root.userData.sculptRuntime=meta;
+  meta.version='ship-forge-v5-pass12';meta.sections={...(meta.sections||{}),surface12:overlays};meta.confidence={...(meta.confidence||{}),visibleSide:.972,rear:.89,hiddenSide:.74,underside:.66};meta.inferred=[...(meta.inferred||[]),'surface wear and heat/soot placement inferred from spacecraft function rather than directly visible source evidence'];meta.surface={proceduralRoughness:true,texturedMeshes:textured,materialVariants:variants,debugMode:'roughness/metalness proxy'};root.userData.sculptRuntime=meta;
   root.userData.pass12={setDebug,get debug(){return debug},stats:{textured,variants},maps};return root.userData.pass12
 }
