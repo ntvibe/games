@@ -16,7 +16,7 @@ jobs:
       - name: Check module syntax
         run: |
           for f in pulse-ascent/*.js; do node --check --input-type=module < "$f"; done
-      - name: Check required files and boss integration
+      - name: Check required files and integration
         run: |
           test -s pulse-ascent/index.html
           test -s pulse-ascent/style.css
@@ -27,6 +27,10 @@ jobs:
           test -s pulse-ascent/doctrine-mastery.js
           test -s pulse-ascent/world-metamorphosis.js
           test -s pulse-ascent/pilot-transformation.js
+          test -s pulse-ascent/generative-director.js
+          test -s pulse-ascent/area-audio.js
+          test -s pulse-ascent/synesthesia-layer-director.js
+          test -s pulse-ascent/area-arranger.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
           grep -q "boss-vulnerability.js" pulse-ascent/index.html
           grep -q "boss-consequences.js" pulse-ascent/index.html
@@ -34,6 +38,10 @@ jobs:
           grep -q "doctrine-mastery.js" pulse-ascent/index.html
           grep -q "world-metamorphosis.js" pulse-ascent/index.html
           grep -q "pilot-transformation.js" pulse-ascent/index.html
+          grep -q "generative-director.js" pulse-ascent/index.html
+          grep -q "area-audio.js" pulse-ascent/index.html
+          grep -q "synesthesia-layer-director.js" pulse-ascent/index.html
+          grep -q "area-arranger.js" pulse-ascent/index.html
           grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOCTRINE ACQUIRED" pulse-ascent/elite-doctrine.js
@@ -49,3 +57,10 @@ jobs:
           grep -q "FORM SHIFT" pulse-ascent/pilot-transformation.js
           grep -q "__pilotTransformation" pulse-ascent/pilot-transformation.js
           grep -q "makeTransformField" pulse-ascent/pilot-transformation.js
+          grep -q "__pulseGenerativeDirector" pulse-ascent/generative-director.js
+          grep -q "__pulseAreaAudio" pulse-ascent/area-audio.js
+          grep -q "LEGACY_ROOTS" pulse-ascent/synesthesia-layer-director.js
+          grep -q "__pulseSynesthesiaLayerDirector" pulse-ascent/synesthesia-layer-director.js
+          grep -q "__pulseAreaArranger" pulse-ascent/area-arranger.js
+          grep -q "GLASS TEMPLE" pulse-ascent/area-arranger.js
+          grep -q "NEURAL CATHEDRAL" pulse-ascent/area-arranger.js
