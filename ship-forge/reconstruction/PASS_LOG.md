@@ -16,26 +16,26 @@ This folder follows the img2threejs reconstruction philosophy: code-only geometr
 10. **Hierarchical detail refinement** — dedicated `10-pass10-detail` system with engine cages, cockpit internals, avionics, service trunks, pistons, asymmetric rear plumbing, weapon installation hardware, underside trays and locator emitters.
 11. **Macro shell reconstruction** — dedicated `11-pass11-macro-shells` system with segmented engine cowls, continuous cockpit-to-dorsal armor flow, unified rear propulsion bridge, authored side armor, dorsal command geometry and deliberate port/starboard asymmetry. Solid convex cowl fillers are disabled so engine negative space stays visible.
 12. **Surface realism** — dedicated runtime `pass12-surface.js` system with procedural roughness/micro-bump maps for UV-capable meshes, deterministic per-mesh material variation, heat bands, soot overlays, edge scuffs and a material-debug inspection mode.
+13. **Reference proportion correction** — dedicated `pass13-reference.js` pass that moves back to large-form accuracy: narrows and lengthens the spear nose, lowers/slopes the canopy, flattens the cockpit-to-dorsal stack, tapers and separates the engine cowls, opens rear negative space, pulls side armor inward and adds a dedicated flat silhouette inspection mode.
 
-## Pass 12 outcome
+## Pass 13 outcome
 
-- Added procedural 128×128 roughness and fine bump textures generated in-browser, so the viewer gains material breakup without shipping new raster assets.
-- UV-capable meshes receive shared procedural roughness and bump maps; convex geometry without UVs still gets deterministic roughness, metalness and tonal variation through cloned material variants.
-- Dark graphite, armor, steel and gunmetal no longer share perfectly uniform reflections, making the layered geometry easier to read under the studio lights.
-- Added subtle engine heat bands around all four propulsion units.
-- Added soot patches around rear, dorsal and underside service areas.
-- Added a small controlled edge-scuff layer on selected high-wear armor edges rather than globally whitening every edge.
-- Added **Mat debug** in the viewer. It temporarily replaces materials with a roughness/metalness proxy palette and hides the decorative surface overlays so breakup can be inspected independently from the beauty lighting.
-- Wireframe and material-debug modes are mutually exclusive to avoid confusing inspection states.
-- Pass 12 wraps the existing explode/tick behavior instead of replacing it, so previous animation and inspection features remain intact.
-- Runtime version is now `ship-forge-v5-pass12` with visible-side reconstruction confidence at 97.2%, rear at 89%, hidden side at 74% and underside at 66%. These remain reconstruction-confidence labels, not measured geometric accuracy.
+- Nose-primary, upper/lower nose, center ridge, canopy, canopy roof and cheek assemblies are proportionally corrected toward a longer/lower/narrower source silhouette rather than receiving additional microdetail.
+- Canopy height is reduced and the side-profile angle strengthened; the cockpit-to-dorsal bridge/cap and dorsal command shell are lowered so the top contour is less bulky.
+- All four Pass 11 engine macro groups are stretched longitudinally, flattened vertically, narrowed laterally and spaced farther apart. Their visible upper/lower cowl plates and lateral blades are also retuned so the propulsion block exposes more negative space.
+- Rear propulsion spine and shoulder shells are compressed laterally/vertically to stop the rear from reading as one solid mass.
+- Port thermal and starboard sensor installations remain asymmetric, but both are pulled closer to the corrected macro silhouette.
+- Large side macro armor is moved slightly inward so the wing/engine outline dominates more strongly in the reference view.
+- Added a sharper spear-tip/chin correction shell, sparse canopy-to-shoulder rails and rear gap braces without filling the newly opened spaces.
+- Added **Silhouette** viewer mode. It temporarily replaces visible ship materials with a flat light material and hides Pass 12 surface overlays, making pure contour comparison against the source much easier at **Ref pose**.
+- Silhouette, material-debug and wireframe modes are mutually coordinated so inspection state does not corrupt material restoration.
+- Runtime version is now `ship-forge-v6-pass13`; visible-side reconstruction confidence is 97.9%, rear 90.5%, hidden side 74.5%, underside 66%. These are reconstruction-confidence labels, not measured geometric accuracy.
+- CI now syntax-checks `pass13-reference.js` alongside all earlier procedural modules.
 
 ## Next refinement targets
 
-- **Pass 13 should be a silhouette/comparison correction pass rather than another density pass.** Compare the reference pose against the source and correct whichever large proportions still diverge most.
-- Tune engine cowl taper, gaps and rear-negative-space shapes directly against the reference before adding more engine detail.
-- Revisit canopy height, windscreen angle and front cheek width if the reference overlay still shows mismatch.
-- Add targeted anisotropy/heat-metal behavior only where it materially improves the engine and exposed steel surfaces.
-- Consider a lightweight post-processing pass (very restrained bloom / contact enhancement) only after material readability is confirmed on mobile.
-- Add GLB export/bake tooling once the macro silhouette stops changing, keeping the procedural source as the editable master.
+- **Pass 14 should automate visual comparison rather than guessing another shape correction blindly.** Add a CI/browser render capture of the exact `Ref pose` plus the flat Silhouette view and retain those images as workflow artifacts.
+- Use that capture loop to compare canopy angle, engine spacing/taper, nose length and rear negative space directly against `reference.webp`, then make only the highest-impact corrections.
+- Once reference-pose macro errors become small, tune selective engine heat-metal behavior and exposed-steel anisotropy rather than adding more geometry.
+- Add GLB export/bake tooling once the silhouette stops changing, keeping procedural source code as the editable master.
 - If additional top/rear/underside references become available, replace inferred geometry instead of refining guesses indefinitely.
