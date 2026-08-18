@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="theme-color" content="#02030a" />
   <meta name="color-scheme" content="dark" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PULSE//ASCENT" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon-192.svg" />
   <title>PULSE//ASCENT — Synesthetic Rail Shooter</title>
   <meta name="description" content="An original generative rhythm rail-shooter with beat-quantized combat, procedural visuals and synthesized music." />
   <link rel="stylesheet" href="./style.css" />
@@ -39,6 +45,7 @@
       <p class="lede">Paint targets. Hold to lock. Release near the rhythm grid to build SYNC and make the whole world perform with you.</p>
       <div class="instructions"><div><b>01</b><span><strong>DRAG</strong> to aim</span></div><div><b>02</b><span><strong>HOLD</strong> up to 8 locks</span></div><div><b>03</b><span><strong>RELEASE ON BEAT</strong> to build SYNC</span></div></div>
       <button id="startBtn" class="start-btn"><span>INITIALIZE AUDIO CORE</span><small>HEADPHONES RECOMMENDED</small></button>
+      <button id="installBtn" class="start-btn compact hidden" type="button"><span>INSTALL OFFLINE</span><small>ADD TO HOME SCREEN</small></button>
       <div class="legal-note">Original code, procedural visuals and synthesized audio. CC0 environment/weapon models are imported locally with provenance; no Rez Infinite assets or music are used.</div>
     </div>
   </div>
@@ -67,5 +74,24 @@
   <script type="module" src="./pilot-transformation.js"></script>
   <script type="module" src="./level-campaign.js"></script>
   <script type="module" src="./bloom-governor.js"></script>
+  <script>
+    (()=>{
+      if('serviceWorker' in navigator){
+        addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+      }
+      let installPrompt=null;
+      const btn=document.querySelector('#installBtn');
+      addEventListener('beforeinstallprompt',event=>{
+        event.preventDefault();installPrompt=event;btn?.classList.remove('hidden');
+      });
+      btn?.addEventListener('click',async()=>{
+        if(!installPrompt)return;
+        installPrompt.prompt();
+        await installPrompt.userChoice.catch(()=>{});
+        installPrompt=null;btn.classList.add('hidden');
+      });
+      addEventListener('appinstalled',()=>{installPrompt=null;btn?.classList.add('hidden');});
+    })();
+  </script>
 </body>
 </html>
