@@ -2,38 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#070a0f" />
-<title>NX-79 // img2threejs Ship Forge</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="theme-color" content="#05080c" />
+<title>NX-79 // Ship Forge Pass 15</title>
 <style>
-:root{color-scheme:dark;--bg:#070a0f;--line:#ffffff1c;--text:#eef3f8;--muted:#8b98a8;--hot:#ff4e2b;--cyan:#82f6ff}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
-canvas{display:block;width:100%;height:100%;touch-action:none}
-.hud{position:fixed;inset:0;pointer-events:none;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:flex;flex-direction:column;justify-content:space-between}
-.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.brand{max-width:min(680px,73vw);padding:12px 14px;border:1px solid var(--line);background:linear-gradient(135deg,#0b1118df,#07090dc8);backdrop-filter:blur(14px);border-radius:14px;box-shadow:0 18px 70px #0009}
-.eyebrow{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);font-weight:900}.brand h1{font-size:clamp(18px,3.2vw,31px);margin:3px 0 4px;letter-spacing:-.04em}.brand p{margin:0;color:var(--muted);font-size:12px;line-height:1.45}
-.status{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.chip{font:800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px;border:1px solid #ffffff17;border-radius:99px;background:#ffffff08;color:#bfc9d4}.chip.hot{color:#ffc1b6;border-color:#ff5b384a;background:#ff4b2212}
-.controls{pointer-events:auto;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;max-width:680px}.controls button{appearance:none;border:1px solid var(--line);background:#0b1018df;color:#dbe3ec;border-radius:10px;padding:10px 11px;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em;text-transform:uppercase;box-shadow:0 8px 24px #0005}.controls button.active{border-color:#ff674a79;background:#3a130ebd;color:#ffd3ca}
-.bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.readout{padding:10px 12px;background:#070a10c8;border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(10px);font:700 10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#9aa8b7;max-width:min(710px,86vw)}.readout b{color:#e8edf3}
-.ref{pointer-events:auto;position:fixed;right:max(14px,env(safe-area-inset-right));bottom:72px;width:min(310px,42vw);aspect-ratio:1;border-radius:14px;overflow:hidden;border:1px solid #ffffff26;background:#fff;box-shadow:0 20px 80px #000b;opacity:0;transform:translateY(10px) scale(.98);transition:.2s}.ref.show{opacity:1;transform:none}.ref img{width:100%;height:100%;object-fit:contain}.ref:before{content:"REFERENCE";position:absolute;left:9px;top:8px;background:#05070ad9;color:#fff;padding:5px 7px;border-radius:6px;font:900 9px ui-monospace,monospace;letter-spacing:.12em}
-.hint{font-size:10px;color:#627181;text-align:right}@media(max-width:700px){.top{display:block}.controls{margin-top:8px;justify-content:flex-start}.brand{max-width:100%}.brand p{display:none}.ref{width:58vw;bottom:86px}.bottom{align-items:flex-end}.hint{max-width:90px}.controls button{padding:9px;font-size:9px}}
+:root{color-scheme:dark;--bg:#05080c;--panel:#080d14e8;--line:#ffffff20;--text:#eef4f9;--muted:#8997a6;--hot:#ff5737;--cyan:#8bf5ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;height:100dvh;overflow:hidden;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);overscroll-behavior:none}canvas{display:block;width:100%;height:100%;touch-action:none}
+.menu-btn{position:fixed;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));z-index:30;width:48px;height:48px;border:1px solid var(--line);border-radius:14px;background:#090f17de;color:#fff;backdrop-filter:blur(16px);box-shadow:0 12px 40px #0008;font-size:22px;line-height:1;display:grid;place-items:center}
+.menu-btn.active{border-color:#79ecff66;background:#10202add}
+.panel{position:fixed;z-index:29;right:max(12px,env(safe-area-inset-right));top:calc(max(12px,env(safe-area-inset-top)) + 58px);width:min(330px,calc(100vw - 24px));max-height:calc(100dvh - 90px);overflow:auto;border:1px solid var(--line);border-radius:18px;background:linear-gradient(150deg,#0b121cef,#05080cf5);backdrop-filter:blur(20px);box-shadow:0 22px 80px #000b;padding:14px;opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+.panel.open{opacity:1;transform:none;pointer-events:auto}.eyebrow{font:900 9px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.15em;text-transform:uppercase;color:var(--cyan)}h1{font-size:20px;margin:4px 0 4px;letter-spacing:-.04em}.desc{font-size:11px;color:var(--muted);line-height:1.45;margin-bottom:11px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.controls button{min-height:44px;border:1px solid var(--line);border-radius:11px;background:#0d141dd9;color:#dfe7ef;font:800 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.045em;text-transform:uppercase}.controls button.active{border-color:#ff694f7a;background:#3b1510dd;color:#ffd7cf}.controls button.wide{grid-column:1/-1}.stats{margin-top:10px;padding:10px;border-radius:11px;border:1px solid #ffffff14;background:#ffffff06;font:700 9px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#8fa0b0}.stats b{color:#eef4f9}.hint{margin-top:8px;font:700 9px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:#617080}.ref{position:fixed;z-index:20;left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));width:min(330px,44vw);aspect-ratio:1;border-radius:15px;overflow:hidden;border:1px solid #ffffff25;background:#fff;box-shadow:0 20px 70px #000b;opacity:0;transform:translateY(10px) scale(.98);pointer-events:none;transition:.18s}.ref.show{opacity:1;transform:none;pointer-events:auto}.ref img{width:100%;height:100%;object-fit:contain}.ref:before{content:"REFERENCE";position:absolute;left:8px;top:8px;background:#05070add;color:#fff;padding:5px 7px;border-radius:6px;font:900 8px ui-monospace,monospace;letter-spacing:.12em}
+@media(max-width:700px){.menu-btn{width:50px;height:50px;border-radius:15px}.panel{top:calc(max(12px,env(safe-area-inset-top)) + 60px);width:calc(100vw - 24px)}.ref{width:min(68vw,310px)}.controls button{min-height:48px;font-size:10px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 </head>
 <body>
-<div class="hud">
-  <div class="top">
-    <div class="brand">
-      <div class="eyebrow">img2threejs reconstruction // pass 14</div>
-      <h1>NX-79 “ACHERON”</h1>
-      <p>Pass 14 pushes the visible profile closer to the reference with a longer spear, tighter canopy armor, flatter dorsal flow and more elongated separated engine pods. Explode is now a two-second cinematic stagger with per-system delay, speed and travel variation.</p>
-      <div class="status"><span class="chip hot">single-view inferred</span><span class="chip">pass 14 likeness</span><span class="chip">2s cinematic explode</span><span class="chip">mobile viewer</span></div>
-    </div>
-    <div class="controls">
-      <button id="refBtn">Reference</button><button id="poseBtn">Ref pose</button><button id="silBtn">Silhouette</button><button id="matBtn">Mat debug</button><button id="wireBtn">Wireframe</button><button id="explodeBtn">Explode</button><button id="spinBtn" class="active">Auto orbit</button><button id="resetBtn">Reset</button>
-    </div>
+<button class="menu-btn" id="menuBtn" aria-label="Open controls">☰</button>
+<div class="panel" id="panel">
+  <div class="eyebrow">img2threejs reconstruction // pass 15</div>
+  <h1>NX-79 “ACHERON”</h1>
+  <div class="desc">Cleaner reference silhouette, phone-first fullscreen viewer, and a hierarchical 2-second explode that now separates individual visible parts as well as major assemblies.</div>
+  <div class="controls">
+    <button id="refBtn">Reference</button><button id="poseBtn">Ref pose</button>
+    <button id="silBtn">Silhouette</button><button id="matBtn">Mat debug</button>
+    <button id="wireBtn">Wireframe</button><button id="explodeBtn">Explode</button>
+    <button id="spinBtn" class="active">Auto orbit</button><button id="fullBtn">Fullscreen</button>
+    <button id="resetBtn" class="wide">Reset view</button>
   </div>
-  <div class="bottom"><div class="readout" id="stats">building model…</div><div class="hint">drag orbit · pinch zoom · two-finger pan</div></div>
+  <div class="stats" id="stats">building model…</div>
+  <div class="hint">Double-tap the ship anywhere to explode / reassemble · drag to orbit · pinch to zoom</div>
 </div>
 <div class="ref" id="refPanel"><img src="./reference.webp" alt="Original cyberpunk spaceship reference"></div>
 <script type="module">
@@ -45,57 +42,59 @@ import { applyPass11 } from './pass11.js';
 import { tunePass11Shells } from './pass11-tune.js';
 import { applyPass13 } from './pass13-reference.js';
 import { applyPass14 } from './pass14-likeness-explode.js';
+import { applyPass15 } from './pass15-mobile-refine.js';
 import { applyPass12 } from './pass12-surface.js';
 
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x070a0f);scene.fog=new THREE.FogExp2(0x070a0f,.0078);
-const camera=new THREE.PerspectiveCamera(30.2,innerWidth/innerHeight,.05,120);camera.position.set(-1.05,4.30,15.55);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.40;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x05080c);scene.fog=new THREE.FogExp2(0x05080c,.0068);
+const camera=new THREE.PerspectiveCamera(29.7,innerWidth/innerHeight,.05,120);camera.position.set(-.90,4.12,15.75);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance',alpha:false});
+const mobile=matchMedia('(max-width:700px)').matches;renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.5:1.8));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.42;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.prepend(renderer.domElement);
 const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(new RoomEnvironment(),.08).texture;
-scene.add(new THREE.HemisphereLight(0xc8e0ff,0x180b08,1.26));
-const key=new THREE.DirectionalLight(0xf4f9ff,4.05);key.position.set(-4.4,9.8,11.8);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
-const rim=new THREE.DirectionalLight(0xff4b28,2.72);rim.position.set(8,2,-9);scene.add(rim);
-const fill=new THREE.DirectionalLight(0x7aa5ff,1.82);fill.position.set(3,-2,11);scene.add(fill);
-const topLight=new THREE.DirectionalLight(0xffffff,1.45);topLight.position.set(0,12,-2);scene.add(topLight);
-const sideKick=new THREE.DirectionalLight(0x9fc2ff,.86);sideKick.position.set(-10,2,-3);scene.add(sideKick);
-const rearKick=new THREE.DirectionalLight(0xffb08a,.58);rearKick.position.set(10,4,7);scene.add(rearKick);
-const floor=new THREE.Mesh(new THREE.CircleGeometry(18,80),new THREE.MeshStandardMaterial({color:0x090d13,roughness:.70,metalness:.22,transparent:true,opacity:.82}));floor.rotation.x=-Math.PI/2;floor.position.y=-2.35;floor.receiveShadow=true;scene.add(floor);
-const grid=new THREE.GridHelper(26,52,0x314758,0x121b25);grid.position.y=-2.32;grid.material.opacity=.21;grid.material.transparent=true;scene.add(grid);
+scene.add(new THREE.HemisphereLight(0xc9e1ff,0x120808,1.22));
+const key=new THREE.DirectionalLight(0xf4f9ff,4.1);key.position.set(-4.5,9.8,11.8);key.castShadow=true;key.shadow.mapSize.set(mobile?512:1024,mobile?512:1024);scene.add(key);
+const rim=new THREE.DirectionalLight(0xff4c29,2.78);rim.position.set(8,2,-9);scene.add(rim);
+const fill=new THREE.DirectionalLight(0x79a6ff,1.86);fill.position.set(3,-2,11);scene.add(fill);
+const topLight=new THREE.DirectionalLight(0xffffff,1.48);topLight.position.set(0,12,-2);scene.add(topLight);
+const sideKick=new THREE.DirectionalLight(0xa2c8ff,.88);sideKick.position.set(-10,2,-3);scene.add(sideKick);
+const rearKick=new THREE.DirectionalLight(0xffb08a,.60);rearKick.position.set(10,4,7);scene.add(rearKick);
 
-const ship=createCyberShip();
-applyPass11(ship);tunePass11Shells(ship);
-const correction=applyPass13(ship);
-const likeness=applyPass14(ship);
-const surface=applyPass12(ship);
-likeness.installExplode();
-scene.add(ship);
-
-const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.055;controls.target.set(-.38,.25,0);controls.minDistance=7;controls.maxDistance=30;controls.maxPolarAngle=Math.PI*.88;controls.autoRotate=true;controls.autoRotateSpeed=.28;
-const refPose=()=>{camera.position.set(-1.05,4.30,15.55);controls.target.set(-.38,.25,0);controls.update()};
-const heroPose=()=>{camera.position.set(-8.30,5.20,13.30);controls.target.set(-.24,.28,0);controls.update()};
-refPose();
+const ship=createCyberShip();applyPass11(ship);tunePass11Shells(ship);const correction=applyPass13(ship);applyPass14(ship);const refine15=applyPass15(ship);const surface=applyPass12(ship);refine15.installExplode();scene.add(ship);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.055;controls.target.set(-.45,.20,0);controls.minDistance=6.5;controls.maxDistance=31;controls.maxPolarAngle=Math.PI*.90;controls.autoRotate=true;controls.autoRotateSpeed=.25;controls.enablePan=!mobile;
+const refPose=()=>{camera.position.set(-.90,4.12,15.75);controls.target.set(-.45,.20,0);controls.update()};
+const heroPose=()=>{camera.position.set(-8.35,5.05,13.55);controls.target.set(-.28,.24,0);controls.update()};refPose();
 
 let wire=false,exploded=false;
 const q=id=>document.getElementById(id),toggle=(el,on)=>el.classList.toggle('active',on);
+const setMenu=on=>{q('panel').classList.toggle('open',on);toggle(q('menuBtn'),on);q('menuBtn').textContent=on?'×':'☰'};
+q('menuBtn').onclick=()=>setMenu(!q('panel').classList.contains('open'));
 const disableSilhouette=()=>{if(correction.silhouette){correction.setSilhouette(false);toggle(q('silBtn'),false)}};
+const toggleExplode=()=>{exploded=!exploded;ship.userData.setExplode(exploded?1:0);toggle(q('explodeBtn'),exploded)};
 q('refBtn').onclick=()=>{q('refPanel').classList.toggle('show');toggle(q('refBtn'),q('refPanel').classList.contains('show'))};
 q('poseBtn').onclick=()=>{controls.autoRotate=false;toggle(q('spinBtn'),false);refPose()};
 q('silBtn').onclick=()=>{if(surface.debug){surface.setDebug(false);toggle(q('matBtn'),false)}if(wire){wire=false;ship.userData.setWireframe(false);toggle(q('wireBtn'),false)}correction.setSilhouette(!correction.silhouette);toggle(q('silBtn'),correction.silhouette)};
 q('matBtn').onclick=()=>{disableSilhouette();if(wire){wire=false;ship.userData.setWireframe(false);toggle(q('wireBtn'),false)}surface.setDebug(!surface.debug);toggle(q('matBtn'),surface.debug)};
 q('wireBtn').onclick=()=>{disableSilhouette();if(surface.debug){surface.setDebug(false);toggle(q('matBtn'),false)}wire=!wire;ship.userData.setWireframe(wire);toggle(q('wireBtn'),wire)};
-q('explodeBtn').onclick=()=>{exploded=!exploded;ship.userData.setExplode(exploded?1:0);toggle(q('explodeBtn'),exploded)};
+q('explodeBtn').onclick=toggleExplode;
 q('spinBtn').onclick=()=>{controls.autoRotate=!controls.autoRotate;toggle(q('spinBtn'),controls.autoRotate)};
+q('fullBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch(e){console.warn('Fullscreen unavailable',e)}};
 q('resetBtn').onclick=()=>{exploded=false;wire=false;disableSilhouette();surface.setDebug(false);ship.userData.setExplode(0);ship.userData.setWireframe(false);toggle(q('explodeBtn'),false);toggle(q('wireBtn'),false);toggle(q('matBtn'),false);controls.autoRotate=true;toggle(q('spinBtn'),true);heroPose()};
 
-let meshes=0,tris=0,instanced=0;
-ship.traverse(o=>{if(o.isMesh&&o.visible){meshes++;const g=o.geometry;if(g?.index)tris+=g.index.count/3;else if(g?.attributes?.position)tris+=g.attributes.position.count/3;if(o.isInstancedMesh)instanced+=o.count||0}});
-const meta=ship.userData.sculptRuntime;
-q('stats').innerHTML=`<b>${meshes}</b> visible mesh systems · <b>${Math.round(tris).toLocaleString()}</b> visible triangles · <b>${likeness.changed.length}</b> Pass 14 corrected assemblies<br><b>${meta.version}</b> · <b>${meta.animation?.explodeTargets||0}</b> staggered explode targets · <b>2.0s</b> eased transition · visible confidence <b>${Math.round(meta.confidence.visibleSide*100)}%</b>`;
+renderer.domElement.addEventListener('dblclick',e=>{e.preventDefault();toggleExplode()});
+let tap={time:0,x:0,y:0},down=null;
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'||e.pointerType==='pen')down={x:e.clientX,y:e.clientY}}, {passive:true});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if((e.pointerType!=='touch'&&e.pointerType!=='pen')||!down)return;
+  const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y);down=null;if(moved>12)return;
+  const now=performance.now(),near=Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<34;
+  if(now-tap.time<285&&near){tap.time=0;toggleExplode()}else tap={time:now,x:e.clientX,y:e.clientY};
+},{passive:true});
 
-const clock=new THREE.Clock();
-function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;ship.userData.tick(t,dt);controls.update();renderer.render(scene,camera)}
-animate();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.75))});
+let meshes=0,tris=0,instanced=0;ship.traverse(o=>{if(o.isMesh&&o.visible){meshes++;const g=o.geometry;if(g?.index)tris+=g.index.count/3;else if(g?.attributes?.position)tris+=g.attributes.position.count/3;if(o.isInstancedMesh)instanced+=o.count||0}});
+const meta=ship.userData.sculptRuntime,counts=refine15.explode?.counts||{primary:0,secondary:0,tertiary:0};
+q('stats').innerHTML=`<b>${meta.version}</b> · <b>${meshes}</b> visible mesh systems · <b>${Math.round(tris).toLocaleString()}</b> triangles<br><b>${meta.animation?.explodeTargets||0}</b> explode targets · ${counts.primary} major / ${counts.secondary} assemblies / <b>${counts.tertiary} small parts</b> · 2.0s stagger`;
+
+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;ship.userData.tick(t,dt);controls.update();renderer.render(scene,camera)}animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,matchMedia('(max-width:700px)').matches?1.5:1.8))});
 </script>
 </body>
 </html>
