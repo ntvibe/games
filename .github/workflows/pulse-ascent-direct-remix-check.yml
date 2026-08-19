@@ -1,0 +1,30 @@
+name: Pulse Ascent Direct Remix check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/direct-ascent-remix.js'
+      - 'pulse-ascent/direct-ascent.js'
+      - 'pulse-ascent/index.html'
+      - 'pulse-ascent/service-worker.js'
+      - '.github/workflows/pulse-ascent-direct-remix-check.yml'
+  workflow_dispatch:
+jobs:
+  remix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check remix module
+        run: node --check --input-type=module < pulse-ascent/direct-ascent-remix.js
+      - name: Verify remix integration
+        run: |
+          test -s pulse-ascent/direct-ascent-remix.js
+          grep -q '__pulseDirectAscentRemix' pulse-ascent/direct-ascent-remix.js
+          grep -q 'remixedEnemies' pulse-ascent/direct-ascent-remix.js
+          grep -q 'applyTempo' pulse-ascent/direct-ascent-remix.js
+          grep -q 'DIRECT REMIX' pulse-ascent/direct-ascent-remix.js
+          grep -q 'direct-ascent-remix.js' pulse-ascent/index.html
+          grep -q 'direct-ascent-remix.js' pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v20" pulse-ascent/service-worker.js
