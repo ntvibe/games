@@ -1,0 +1,94 @@
+name: Pulse Ascent Direct Ascent check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-direct-ascent-check.yml'
+  workflow_dispatch:
+jobs:
+  direct-ascent-webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration check
+        run: |
+          node --check --input-type=module < pulse-ascent/direct-ascent.js
+          node --check --input-type=module < pulse-ascent/mastery-progression.js
+          node --check --input-type=module < pulse-ascent/run-progression.js
+          grep -q "__pulseDirectAscent" pulse-ascent/direct-ascent.js
+          grep -q "LIMITED RECOVERY" pulse-ascent/direct-ascent.js
+          grep -q "direct-ascent.js" pulse-ascent/index.html
+          grep -q "direct-ascent.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v20" pulse-ascent/service-worker.js
+          grep -q "__pulseDirectAscent?.active" pulse-ascent/mastery-progression.js
+          grep -q "__pulseDirectAscent?.active" pulse-ascent/run-progression.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 > /tmp/pulse-direct-server.log 2>&1 &
+          sleep 2
+      - name: Exercise five-Area carry and result state
+        run: |
+          cat > /tmp/pulse-direct-check.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-direct-evidence';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.addInitScript(()=>{
+            const completed={};for(let i=1;i<=5;i++)completed[i]={score:1000*i,date:'2026-08-19T00:00:00.000Z'};
+            localStorage.setItem('pulse-ascent-campaign-v1',JSON.stringify({selected:1,unlocked:5,completed}));
+            const areas={};for(let i=1;i<=5;i++)areas[i]={clears:1,bestRoutes:0,bestHits:0,bestRiskHits:0,bestPerfectHits:0,bestScore:1000};
+            localStorage.setItem('pulse-ascent-mastery-v1',JSON.stringify({areas}));
+            localStorage.setItem('pulse-ascent-best-v1',JSON.stringify({score:9999,rank:'B'}));
+          });
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.waitForFunction(()=>window.__pulseDirectAscent&&window.__pulseMasteryProgression&&window.__pulseCampaign,{timeout:15000});
+          const launch=await page.evaluate(()=>({disabled:document.querySelector('#directAscentBtn')?.disabled,text:document.querySelector('#directAscentBtn')?.innerText||'',unlocked:window.__pulseDirectAscent.isUnlocked()}));
+          if(!launch.unlocked||launch.disabled||!launch.text.includes('5-AREA GAUNTLET'))throw new Error(`Direct Ascent did not unlock: ${JSON.stringify(launch)}`);
+          await page.tap('#directAscentBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseDirectAscent?.active,{timeout:15000});
+          const started=await page.evaluate(()=>({selected:window.__pulseCampaign.state.selected,state:window.__pulseDirectAscent.stats(),chip:document.querySelector('#directAscentChip')?.innerText||''}));
+          if(started.selected!==1||!started.state.active||!started.chip.includes('AREA 1/5'))throw new Error(`Direct Ascent start invalid: ${JSON.stringify(started)}`);
+
+          await page.evaluate(()=>{const g=window.__pulseAscent;g.score=12345;g.sync=80;g.evolution=4;g.overdrive=60;g.updateHud();g.finish();});
+          await page.waitForTimeout(120);
+          const transition=await page.evaluate(()=>({visible:!document.querySelector('#directAscentTransition')?.classList.contains('hidden'),text:document.querySelector('#directAscentTransition')?.innerText||'',resultHidden:document.querySelector('#result')?.classList.contains('hidden')}));
+          if(!transition.visible||!transition.text.includes('AREA 02')||!transition.resultHidden)throw new Error(`Area link transition invalid: ${JSON.stringify(transition)}`);
+          await page.screenshot({path:`${out}/01-direct-area-link-mobile.png`,fullPage:true});
+          await page.waitForTimeout(900);
+          const carried=await page.evaluate(()=>({selected:window.__pulseCampaign.state.selected,running:window.__pulseAscent.running,score:window.__pulseAscent.score,sync:window.__pulseAscent.sync,evolution:window.__pulseAscent.evolution,overdrive:window.__pulseAscent.overdrive,state:window.__pulseDirectAscent.stats(),best:JSON.parse(localStorage.getItem('pulse-ascent-best-v1')||'{}'),mastery:JSON.parse(localStorage.getItem('pulse-ascent-mastery-v1')||'{}')}));
+          if(carried.selected!==2||!carried.running||carried.score!==12345||carried.evolution!==5||carried.sync<60||carried.sync>65||carried.overdrive<26||carried.overdrive>28)throw new Error(`Carry state invalid: ${JSON.stringify(carried)}`);
+          if(carried.best.score!==9999||carried.mastery.areas?.['1']?.clears!==1)throw new Error(`Challenge polluted campaign records: ${JSON.stringify(carried)}`);
+
+          await page.evaluate(()=>{const g=window.__pulseAscent,d=window.__pulseDirectAscent;window.__pulseCampaign.state.selected=5;d.state.area=5;d.state.damage=3;g.score=55555;g.finish();});
+          await page.waitForTimeout(120);
+          const final=await page.evaluate(()=>({active:window.__pulseDirectAscent.active,title:document.querySelector('.result-card h2')?.innerText||'',panel:document.querySelector('.direct-ascent-result')?.innerText||'',stored:JSON.parse(localStorage.getItem('pulse-ascent-direct-ascent-v1')||'{}'),best:JSON.parse(localStorage.getItem('pulse-ascent-best-v1')||'{}'),mastery:JSON.parse(localStorage.getItem('pulse-ascent-mastery-v1')||'{}')}));
+          if(final.active||!final.title.includes('DIRECT ASCENT COMPLETE')||!final.panel.includes('55,555')||final.stored.bestScore!==55555||final.stored.bestDamage!==3)throw new Error(`Direct Ascent result invalid: ${JSON.stringify(final)}`);
+          if(final.best.score!==9999||final.mastery.areas?.['5']?.clears!==1)throw new Error(`Final challenge polluted normal records: ${JSON.stringify(final)}`);
+          await page.screenshot({path:`${out}/02-direct-complete-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({launch,started,transition,carried,final,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({launch,started,transition,carried,final},null,2));
+          NODE
+          node /tmp/pulse-direct-check.mjs
+      - name: Upload Direct Ascent evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-direct-evidence
+          path: pulse-ascent-direct-evidence/
+          if-no-files-found: warn
+          retention-days: 7
