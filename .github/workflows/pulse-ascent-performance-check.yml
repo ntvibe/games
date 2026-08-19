@@ -51,11 +51,6 @@ jobs:
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
           await page.waitForFunction(()=>window.__pulseSettings&&window.__pulsePerformanceDirector&&window.__pulseTopologyWorlds,{timeout:15000});
           await page.tap('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
-          await page.waitForFunction(()=>window.__pulseModelFusion?.ready===true,{timeout:12000}).catch(()=>{});
-          await page.evaluate(()=>{
-            const g=window.__pulseAscent;
-            g.spawnEnemy('drone',new THREE.Vector3?.(0,0,-20));
-          }).catch(()=>{});
           await page.evaluate(()=>window.__pulsePerformanceDirector.forceTier(2));await page.waitForTimeout(220);
           const lean=await page.evaluate(()=>{
             const perf=window.__pulsePerformanceDirector.stats(),top=window.__pulseTopologyWorlds.worlds[window.__pulseTopologyWorlds.area-1],field=window.__pulseGenerativeDirector?.field;
