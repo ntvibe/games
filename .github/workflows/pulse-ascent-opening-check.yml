@@ -1,8 +1,9 @@
-name: Pulse Ascent Area 01 opening check
+name: Pulse Ascent campaign opening check
 on:
   push:
     paths:
       - 'pulse-ascent/area1-opening-director.js'
+      - 'pulse-ascent/campaign-opening-director.js'
       - 'pulse-ascent/index.html'
       - 'pulse-ascent/service-worker.js'
       - '.github/workflows/pulse-ascent-opening-check.yml'
@@ -10,21 +11,28 @@ on:
 jobs:
   opening:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check opening module syntax and integration
+      - name: Check opening modules and integration
         run: |
           node --check --input-type=module < pulse-ascent/area1-opening-director.js
+          node --check --input-type=module < pulse-ascent/campaign-opening-director.js
           grep -q "__pulseArea1Opening" pulse-ascent/area1-opening-director.js
           grep -q "EVOLUTION SEED" pulse-ascent/area1-opening-director.js
-          grep -q "SIGNAL ACCEPTED" pulse-ascent/area1-opening-director.js
-          grep -q "area1-opening-director.js" pulse-ascent/index.html
-          grep -q "area1-opening-director.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v27" pulse-ascent/service-worker.js
+          grep -q "__pulseCampaignOpening" pulse-ascent/campaign-opening-director.js
+          grep -q "MIRROR PAIR" pulse-ascent/campaign-opening-director.js
+          grep -q "CHROMA ORBIT" pulse-ascent/campaign-opening-director.js
+          grep -q "HUNTER SEED" pulse-ascent/campaign-opening-director.js
+          grep -q "CHORD LOCK" pulse-ascent/campaign-opening-director.js
+          grep -q "RESONANCE LOCK" pulse-ascent/campaign-opening-director.js
+          grep -q "CHOIR LOCK" pulse-ascent/campaign-opening-director.js
+          grep -q "campaign-opening-director.js" pulse-ascent/index.html
+          grep -q "campaign-opening-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v28" pulse-ascent/service-worker.js
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -34,7 +42,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-opening-server.log 2>&1 &
           sleep 2
-      - name: Exercise authored opening in WebGL
+      - name: Exercise authored openings in WebGL
         run: |
           cat >/tmp/pulse-opening.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -42,35 +50,59 @@ jobs:
           const require=createRequire(process.cwd()+'/package.json');
           const {chromium}=require('playwright');
           const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
-          const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
-          const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
-          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,step:4,dismissed:false})));
-          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
-          await page.waitForFunction(()=>window.__pulseAscent&&window.__pulseArea1Opening&&window.__pulseOnboarding,{timeout:20000});
-          await page.locator('#startBtn').click();
-          await page.waitForFunction(()=>window.__pulseAscent.running,{timeout:10000});
-          await page.waitForTimeout(800);
-          const initial=await page.evaluate(()=>({enemies:window.__pulseAscent.enemies.filter(e=>!e.dead&&e.type!=='danger').length,stats:window.__pulseArea1Opening.stats()}));
-          if(initial.enemies<3||initial.enemies>5)throw new Error(`Expected restrained 3-target arrival, got ${initial.enemies}`);
-          await page.evaluate(()=>{const g=window.__pulseAscent;g.bar=4;g.spawnPattern(4);});
-          await page.waitForTimeout(250);
-          const staged=await page.evaluate(()=>({stats:window.__pulseArea1Opening.stats(),types:window.__pulseAscent.enemies.filter(e=>!e.dead).map(e=>e.type)}));
-          if(staged.stats.stage!=='EVOLUTION SEED'||!staged.types.includes('node'))throw new Error(`Opening staging failed: ${JSON.stringify(staged)}`);
-          await page.evaluate(()=>window.__pulseAscent.scoreTiming(.96,4));
-          const reactive=await page.evaluate(()=>window.__pulseArea1Opening.stats());
-          if(reactive.perfects<1)throw new Error('Perfect release did not feed opening director');
-          await page.evaluate(()=>window.__pulseAscent.onEnemyDestroyed({type:'node',score:0}));
-          const transformed=await page.evaluate(()=>window.__pulseArea1Opening.stats());
-          if(!transformed.firstNode)throw new Error('First node did not trigger form-shift beat');
           fs.mkdirSync('pulse-ascent-opening',{recursive:true});
-          await page.screenshot({path:'pulse-ascent-opening/area01-opening-mobile.png',fullPage:true});
-          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
+
+          const expectations={
+            2:{initial:'TEMPLE THRESHOLD',stage:'MIRROR PAIR',type:'prism'},
+            3:{initial:'COLOR DRIFT',stage:'CHROMA ORBIT',type:'node'},
+            4:{initial:'GERMINATION',stage:'HUNTER SEED',type:'sentinel'},
+            5:{initial:'CHOIR DOOR',stage:'CHORD LOCK',type:'node'}
+          };
+
+          for(const area of [2,3,4,5]){
+            const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1});
+            await context.addInitScript(area=>{
+              localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,step:4,dismissed:false}));
+              localStorage.setItem('pulse-ascent-campaign-v1',JSON.stringify({selected:area,unlocked:5,completed:{1:{score:1},2:{score:1},3:{score:1},4:{score:1}}}));
+            },area);
+            const page=await context.newPage(),errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+            await page.waitForFunction(()=>window.__pulseAscent&&window.__pulseCampaignOpening&&window.__pulseArea1Opening,{timeout:20000});
+            await page.locator('#startBtn').click();
+            await page.waitForFunction(()=>window.__pulseAscent.running,{timeout:10000});
+            await page.waitForTimeout(350);
+
+            const expected=expectations[area];
+            const initial=await page.evaluate(()=>({stats:window.__pulseCampaignOpening.stats(),count:window.__pulseAscent.enemies.filter(e=>!e.dead&&e.type!=='danger').length}));
+            if(initial.stats.area!==area||initial.stats.stage!==expected.initial)throw new Error(`Area ${area} arrival mismatch: ${JSON.stringify(initial)}`);
+            if(initial.count<3||initial.count>6)throw new Error(`Area ${area} opening density is not restrained: ${initial.count}`);
+
+            await page.evaluate(()=>{const g=window.__pulseAscent;g.bar=4;g.spawnPattern(4);});
+            await page.waitForTimeout(220);
+            const staged=await page.evaluate(()=>({stats:window.__pulseCampaignOpening.stats(),types:window.__pulseAscent.enemies.filter(e=>!e.dead).map(e=>e.type)}));
+            if(staged.stats.stage!==expected.stage||!staged.types.includes(expected.type))throw new Error(`Area ${area} authored stage failed: ${JSON.stringify(staged)}`);
+
+            await page.evaluate(()=>window.__pulseAscent.scoreTiming(.96,4));
+            const reactive=await page.evaluate(()=>window.__pulseCampaignOpening.stats());
+            if(reactive.perfects<1)throw new Error(`Area ${area} Perfect release did not feed opening director`);
+
+            await page.evaluate(type=>window.__pulseAscent.onEnemyDestroyed({type,score:0}),expected.type);
+            const signature=await page.evaluate(()=>window.__pulseCampaignOpening.stats());
+            if(!signature.firstSignature)throw new Error(`Area ${area} signature enemy did not trigger audiovisual beat`);
+
+            await page.screenshot({path:`pulse-ascent-opening/area0${area}-opening-mobile.png`,fullPage:true});
+            if(errors.length)throw new Error(`Area ${area} browser errors: ${errors.join(' | ')}`);
+            await context.close();
+          }
+
           await browser.close();
           NODE
           node /tmp/pulse-opening.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pulse-ascent-area01-opening
+          name: pulse-ascent-campaign-openings
           path: pulse-ascent-opening
           if-no-files-found: ignore
