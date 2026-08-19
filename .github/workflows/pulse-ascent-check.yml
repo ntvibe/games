@@ -39,6 +39,8 @@ jobs:
           test -s pulse-ascent/boss-topology-rewrite.js
           test -s pulse-ascent/area-boss-doctrine.js
           test -s pulse-ascent/area-boss-vulnerability.js
+          test -s pulse-ascent/boss-synesthesia.js
+          test -s pulse-ascent/area-setpieces.js
           test -s pulse-ascent/visual-pruning.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
           grep -q "boss-vulnerability.js" pulse-ascent/index.html
@@ -59,6 +61,8 @@ jobs:
           grep -q "boss-topology-rewrite.js" pulse-ascent/index.html
           grep -q "area-boss-doctrine.js" pulse-ascent/index.html
           grep -q "area-boss-vulnerability.js" pulse-ascent/index.html
+          grep -q "boss-synesthesia.js" pulse-ascent/index.html
+          grep -q "area-setpieces.js" pulse-ascent/index.html
           grep -q "visual-pruning.js" pulse-ascent/index.html
           grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
@@ -112,6 +116,14 @@ jobs:
           grep -q "CHROMA ORBIT" pulse-ascent/area-boss-vulnerability.js
           grep -q "ORGANIC SEVER" pulse-ascent/area-boss-vulnerability.js
           grep -q "CHORD LOCK" pulse-ascent/area-boss-vulnerability.js
+          grep -q "__pulseBossSynesthesia" pulse-ascent/boss-synesthesia.js
+          grep -q "__pulseAreaSetpieces" pulse-ascent/area-setpieces.js
+          grep -q "DATA CONVOY" pulse-ascent/area-setpieces.js
+          grep -q "PRISM PROCESSION" pulse-ascent/area-setpieces.js
+          grep -q "TIDAL SPIRAL" pulse-ascent/area-setpieces.js
+          grep -q "HUNTER GROVE" pulse-ascent/area-setpieces.js
+          grep -q "CHOIR AISLE" pulse-ascent/area-setpieces.js
+          grep -q "bar===state.suppressedBar" pulse-ascent/area-setpieces.js
           grep -q "generative-architecture" pulse-ascent/visual-pruning.js
-          grep -q "area-boss-vulnerability.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v10" pulse-ascent/service-worker.js
+          grep -q "area-setpieces.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v12" pulse-ascent/service-worker.js
