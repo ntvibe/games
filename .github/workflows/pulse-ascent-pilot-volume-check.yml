@@ -1,0 +1,66 @@
+name: Pulse Ascent pilot volume check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-pilot-volume-check.yml'
+  workflow_dispatch:
+jobs:
+  pilot-volume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration
+        run: |
+          node --check --input-type=module < pulse-ascent/pilot-volume.js
+          grep -q 'pilot-volume.js' pulse-ascent/index.html
+          grep -q 'pilot-volume.js' pulse-ascent/service-worker.js
+          grep -q 'pulse-ascent-v15' pulse-ascent/service-worker.js
+          grep -q '__pulsePilotVolume' pulse-ascent/pilot-volume.js
+          grep -q 'NormalBlending' pulse-ascent/pilot-volume.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-pilot-server.log 2>&1 &
+          sleep 2
+      - name: Exercise pilot evolution
+        run: |
+          cat > /tmp/pilot-volume.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-pilot-volume';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const page=await browser.newPage({viewport:{width:1280,height:800}});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulsePilotVolume&&window.__pilotTransformation,{timeout:15000});await page.waitForTimeout(800);
+          const initial=await page.evaluate(()=>window.__pulsePilotVolume.stats());
+          if(initial.solids<18||initial.plates<8||!initial.normalBlending)throw new Error(`pilot volume invalid ${JSON.stringify(initial)}`);
+          await page.screenshot({path:`${out}/01-pilot-volume.png`});
+          await page.evaluate(()=>{const g=window.__pulseAscent;g.evolution=1;g.world.setEvolution(1);window.__pilotTransformation.trigger(1,false)});await page.waitForTimeout(450);
+          const block=await page.evaluate(()=>window.__pulsePilotVolume.stats());
+          await page.evaluate(()=>{const g=window.__pulseAscent;g.evolution=6;g.world.setEvolution(6);window.__pilotTransformation.trigger(6,false)});await page.waitForTimeout(550);
+          const ascend=await page.evaluate(()=>window.__pulsePilotVolume.stats());
+          if(block.stage!=='BLOCK'||ascend.stage!=='ASCEND')throw new Error(`pilot evolution invalid ${JSON.stringify({block,ascend})}`);
+          await page.screenshot({path:`${out}/02-pilot-ascend.png`});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({initial,block,ascend,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          NODE
+          node /tmp/pilot-volume.mjs
+      - name: Upload pilot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-pilot-volume
+          path: pulse-pilot-volume/
+          retention-days: 7
