@@ -27,6 +27,8 @@ jobs:
           test -s pulse-ascent/doctrine-mastery.js
           test -s pulse-ascent/world-metamorphosis.js
           test -s pulse-ascent/pilot-transformation.js
+          test -s pulse-ascent/pilot-volume.js
+          test -s pulse-ascent/pilot-performance.js
           test -s pulse-ascent/generative-director.js
           test -s pulse-ascent/area-audio.js
           test -s pulse-ascent/synesthesia-layer-director.js
@@ -51,6 +53,8 @@ jobs:
           grep -q "doctrine-mastery.js" pulse-ascent/index.html
           grep -q "world-metamorphosis.js" pulse-ascent/index.html
           grep -q "pilot-transformation.js" pulse-ascent/index.html
+          grep -q "pilot-volume.js" pulse-ascent/index.html
+          grep -q "pilot-performance.js" pulse-ascent/index.html
           grep -q "generative-director.js" pulse-ascent/index.html
           grep -q "area-audio.js" pulse-ascent/index.html
           grep -q "synesthesia-layer-director.js" pulse-ascent/index.html
@@ -83,6 +87,13 @@ jobs:
           grep -q "FORM SHIFT" pulse-ascent/pilot-transformation.js
           grep -q "__pilotTransformation" pulse-ascent/pilot-transformation.js
           grep -q "makeTransformField" pulse-ascent/pilot-transformation.js
+          grep -q "__pulsePilotVolume" pulse-ascent/pilot-volume.js
+          grep -q "NormalBlending" pulse-ascent/pilot-volume.js
+          grep -q "__pulsePilotPerformance" pulse-ascent/pilot-performance.js
+          grep -q "FREE_VECTOR" pulse-ascent/pilot-performance.js
+          grep -q "OVERDRIVE" pulse-ascent/pilot-performance.js
+          grep -q "baseRelease" pulse-ascent/pilot-performance.js
+          grep -q "baseHit" pulse-ascent/pilot-performance.js
           grep -q "__pulseGenerativeDirector" pulse-ascent/generative-director.js
           grep -q "__pulseAreaAudio" pulse-ascent/area-audio.js
           grep -q "LEGACY_ROOTS" pulse-ascent/synesthesia-layer-director.js
@@ -141,9 +152,10 @@ jobs:
           grep -q "CATHEDRAL GATE" pulse-ascent/traversal-setpieces.js
           grep -q "NormalBlending" pulse-ascent/traversal-setpieces.js
           grep -q "generative-architecture" pulse-ascent/visual-pruning.js
+          grep -q "pilot-performance.js" pulse-ascent/service-worker.js
           grep -q "model-fusion.js" pulse-ascent/service-worker.js
           grep -q "factory-machine.glb" pulse-ascent/service-worker.js
           grep -q "blaster-rifle.glb" pulse-ascent/service-worker.js
           grep -q "area-setpieces.js" pulse-ascent/service-worker.js
           grep -q "traversal-setpieces.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v14" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v16" pulse-ascent/service-worker.js
