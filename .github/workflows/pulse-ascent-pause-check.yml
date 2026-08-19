@@ -1,0 +1,87 @@
+name: Pulse Ascent pause lifecycle check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-pause-check.yml'
+  workflow_dispatch:
+jobs:
+  pause-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check integration and syntax
+        run: |
+          node --check --input-type=module < pulse-ascent/pause-lifecycle.js
+          grep -q "pause-lifecycle.js" pulse-ascent/index.html
+          grep -q "pause-lifecycle.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v25" pulse-ascent/service-worker.js
+          grep -q "visibilitychange" pulse-ascent/pause-lifecycle.js
+          grep -q "RESUME ON GRID" pulse-ascent/pause-lifecycle.js
+          grep -q "audio.step=Math.ceil" pulse-ascent/pause-lifecycle.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 > /tmp/pulse-pause-server.log 2>&1 &
+          sleep 2
+      - name: Exercise pause lifecycle in WebGL
+        run: |
+          cat > /tmp/pulse-pause.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-pause-evidence';fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulsePause&&window.__pulseSettings,{timeout:15000});
+          await page.waitForTimeout(500);
+          const before=await page.evaluate(()=>({time:window.__pulseAscent.time,evo:window.__pulseAscent.evolution}));
+          await page.click('.pause-toggle');await page.waitForTimeout(650);
+          const paused=await page.evaluate(()=>({pause:window.__pulsePause.stats(),time:window.__pulseAscent.time,evo:window.__pulseAscent.evolution,layer:!document.querySelector('#pauseLayer').classList.contains('hidden')}));
+          if(!paused.pause.paused||!paused.layer||Math.abs(paused.time-before.time)>.08)throw new Error(`Simulation did not freeze: ${JSON.stringify({before,paused})}`);
+          await page.evaluate(()=>window.__pulseAscent.takeHit());await page.waitForTimeout(80);
+          const protectedState=await page.evaluate(()=>({time:window.__pulseAscent.time,evo:window.__pulseAscent.evolution,audio:window.__pulsePause.stats().audioState}));
+          if(protectedState.evo!==before.evo||Math.abs(protectedState.time-paused.time)>.08)throw new Error(`Paused combat mutated: ${JSON.stringify(protectedState)}`);
+          await page.screenshot({path:`${out}/01-paused-mobile.png`});
+
+          await page.click('#pauseLayer [data-action="settings"]');await page.waitForTimeout(120);
+          if(await page.locator('#settingsPanel').evaluate(el=>el.classList.contains('hidden')))throw new Error('Settings did not open from pause');
+          await page.screenshot({path:`${out}/02-settings-paused-mobile.png`});
+          await page.click('#settingsPanel .settings-close');await page.waitForTimeout(120);
+          const returned=await page.evaluate(()=>({paused:window.__pulsePause.stats().paused,layer:!document.querySelector('#pauseLayer').classList.contains('hidden')}));
+          if(!returned.paused||!returned.layer)throw new Error(`Closing settings did not return to pause: ${JSON.stringify(returned)}`);
+
+          await page.click('#pauseLayer [data-action="resume"]');
+          await page.waitForFunction(()=>window.__pulsePause.stats().paused===false,{timeout:5000});await page.waitForTimeout(300);
+          const resumed=await page.evaluate(()=>({pause:window.__pulsePause.stats(),time:window.__pulseAscent.time,hidden:document.querySelector('#pauseLayer').classList.contains('hidden')}));
+          if(!resumed.hidden||resumed.pause.resumeCount<1||resumed.time<=paused.time+.08)throw new Error(`Resume failed: ${JSON.stringify(resumed)}`);
+          await page.screenshot({path:`${out}/03-resumed-mobile.png`});
+
+          await page.evaluate(()=>window.__pulsePause.pause('background'));await page.waitForTimeout(100);
+          const background=await page.evaluate(()=>window.__pulsePause.stats());
+          if(!background.paused||!background.reasons.includes('background'))throw new Error(`Background guard failed: ${JSON.stringify(background)}`);
+          await page.evaluate(()=>window.__pulsePause.resume('background'));
+          await page.waitForFunction(()=>window.__pulsePause.stats().paused===false,{timeout:5000});
+          if(errors.length)throw new Error(errors.join('\n'));
+          await browser.close();
+          NODE
+          node /tmp/pulse-pause.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pulse-ascent-pause-evidence
+          path: pulse-ascent-pause-evidence
