@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'pulse-ascent/direct-ascent-crossover.js'
+      - 'pulse-ascent/direct-ascent-crossover-gameplay.js'
       - 'pulse-ascent/direct-ascent-remix.js'
       - 'pulse-ascent/service-worker.js'
       - '.github/workflows/pulse-ascent-direct-crossover-check.yml'
@@ -18,13 +19,20 @@ jobs:
       - name: Syntax check crossover modules
         run: |
           node --check --input-type=module < pulse-ascent/direct-ascent-crossover.js
+          node --check --input-type=module < pulse-ascent/direct-ascent-crossover-gameplay.js
           node --check --input-type=module < pulse-ascent/direct-ascent-remix.js
       - name: Verify crossover integration
         run: |
           grep -q "import './direct-ascent-crossover.js'" pulse-ascent/direct-ascent-remix.js
+          grep -q "import './direct-ascent-crossover-gameplay.js'" pulse-ascent/direct-ascent-crossover.js
           grep -q "__pulseDirectAscentCrossover" pulse-ascent/direct-ascent-crossover.js
           grep -q "NETWORK MEMORY" pulse-ascent/direct-ascent-crossover.js
           grep -q "direct-crossover-ghost" pulse-ascent/direct-ascent-crossover.js
           grep -q "NormalBlending" pulse-ascent/direct-ascent-crossover.js
-          grep -q "direct-ascent-crossover.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v21" pulse-ascent/service-worker.js
+          grep -q "__pulseDirectAscentCrossoverGameplay" pulse-ascent/direct-ascent-crossover-gameplay.js
+          grep -q "LEGACY INVASION" pulse-ascent/direct-ascent-crossover-gameplay.js
+          grep -q "MEMORY ATTACK" pulse-ascent/direct-ascent-crossover-gameplay.js
+          grep -q "invasionFormation" pulse-ascent/direct-ascent-crossover-gameplay.js
+          grep -q "legacyBossPattern" pulse-ascent/direct-ascent-crossover-gameplay.js
+          grep -q "direct-ascent-crossover-gameplay.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v22" pulse-ascent/service-worker.js
