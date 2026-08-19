@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './direct-ascent-crossover.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const waitFor=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent&&window.__pulseDirectAscent&&window.__pulseAreaAudio&&window.__pulseTopologyWorlds?resolve(window.__pulseAscent):requestAnimationFrame(tick);tick();});
