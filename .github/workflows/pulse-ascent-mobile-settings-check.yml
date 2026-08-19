@@ -1,0 +1,69 @@
+name: Pulse Ascent mobile settings check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/mobile-settings.js'
+      - 'pulse-ascent/index.html'
+      - 'pulse-ascent/service-worker.js'
+      - '.github/workflows/pulse-ascent-mobile-settings-check.yml'
+  workflow_dispatch:
+jobs:
+  mobile-settings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/mobile-settings.js
+          grep -q "mobile-settings.js" pulse-ascent/index.html
+          grep -q "mobile-settings.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v23" pulse-ascent/service-worker.js
+          grep -q "COMFORT FX" pulse-ascent/mobile-settings.js
+          grep -q "GRAPHICS" pulse-ascent/mobile-settings.js
+          grep -q "NormalBlending\|bloom.threshold" pulse-ascent/mobile-settings.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run local server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-settings-server.log 2>&1 &
+          sleep 2
+      - name: Exercise mobile settings
+        run: |
+          cat >/tmp/pulse-settings.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-settings-evidence';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.waitForFunction(()=>window.__pulseSettings&&document.querySelector('#settingsPanel'),{timeout:12000});
+          await page.tap('.settings-toggle.start');await page.waitForTimeout(120);await page.screenshot({path:`${out}/01-settings-mobile.png`});
+          const box=await page.locator('#settingsPanel .settings-card').boundingBox();if(!box||box.x<0||box.x+box.width>390)throw new Error(`Settings panel overflow: ${JSON.stringify(box)}`);
+          await page.locator('#volumeSlider').fill('35');await page.tap('#hapticToggle');await page.tap('#comfortToggle');await page.tap('[data-mode="battery"]');
+          const state=await page.evaluate(()=>window.__pulseSettings.stats());if(Math.abs(state.volume-.35)>.02||state.haptics!==false||state.comfort!==true||state.graphics!=='battery')throw new Error(`Settings did not apply: ${JSON.stringify(state)}`);
+          await page.tap('.settings-close');await page.tap('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await page.waitForTimeout(500);
+          const live=await page.evaluate(()=>({settings:window.__pulseSettings.stats(),master:window.__pulseAscent.audio.master?.gain?.value,comfort:document.documentElement.dataset.comfort,overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight]}));
+          if(Math.abs(live.master-.35)>.03||live.comfort!=='1'||live.overflow[0]>1||live.overflow[1]>1)throw new Error(`Live settings invalid: ${JSON.stringify(live)}`);
+          await page.screenshot({path:`${out}/02-comfort-gameplay-mobile.png`});
+          await page.reload({waitUntil:'networkidle'});await page.waitForFunction(()=>window.__pulseSettings,{timeout:12000});const persisted=await page.evaluate(()=>window.__pulseSettings.stats());if(Math.abs(persisted.volume-.35)>.02||persisted.haptics!==false||persisted.comfort!==true||persisted.graphics!=='battery')throw new Error(`Settings persistence failed: ${JSON.stringify(persisted)}`);
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({state,live,persisted,errors},null,2));await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          NODE
+          node /tmp/pulse-settings.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-settings-evidence
+          path: pulse-ascent-settings-evidence/
+          if-no-files-found: warn
+          retention-days: 7
