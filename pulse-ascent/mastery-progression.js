@@ -71,9 +71,11 @@ waitFor().then(game=>{
 
   const baseFinish=game.finish.bind(game);
   game.finish=(...args)=>{
-    const id=clamp(campaign.state.selected||run.area||1,1,5),data=areaData(id),runScore=Math.max(0,Math.floor((game.score||0)-(run.scoreStart||0)));
-    data.clears=(data.clears||0)+1;data.bestRoutes=Math.max(data.bestRoutes||0,run.routeSections.size);data.bestHits=Math.max(data.bestHits||0,run.hits);data.bestRiskHits=Math.max(data.bestRiskHits||0,run.riskHits);data.bestPerfectHits=Math.max(data.bestPerfectHits||0,run.perfectHits);data.bestScore=Math.max(data.bestScore||0,runScore);persist();
-    const result=baseFinish(...args),g=grade(data);renderResult(id,data,g);annotateLevelSelect();return result;
+    const id=clamp(campaign.state.selected||run.area||1,1,5),data=areaData(id),runScore=Math.max(0,Math.floor((game.score||0)-(run.scoreStart||0))),direct=!!window.__pulseDirectAscent?.active;
+    if(!direct){
+      data.clears=(data.clears||0)+1;data.bestRoutes=Math.max(data.bestRoutes||0,run.routeSections.size);data.bestHits=Math.max(data.bestHits||0,run.hits);data.bestRiskHits=Math.max(data.bestRiskHits||0,run.riskHits);data.bestPerfectHits=Math.max(data.bestPerfectHits||0,run.perfectHits);data.bestScore=Math.max(data.bestScore||0,runScore);persist();
+    }
+    const result=baseFinish(...args),g=grade(data);if(!direct)renderResult(id,data,g);annotateLevelSelect();return result;
   };
 
   window.__pulseMasteryProgression={
