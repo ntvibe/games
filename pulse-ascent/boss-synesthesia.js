@@ -17,7 +17,7 @@ waitFor().then(game=>{
   const ping=(m,t,g=.03,type='sine',pan=0,d=.14)=>audio.osc(type,audio.midi(m),t,d,g,audio.fx||audio.music,0,pan);
   const cueBus=(step=0,strong=false)=>{
     if(!audio.ctx)return;const p=profile(),t=audio.ctx.currentTime+.012,n=p.scale[Math.min(p.scale.length-1,step%p.scale.length)]||0;
-    [0,7,12].forEach((iv,i)=>ping(p.root+24+n+iv,t+i*.014,strong?.038:.025,i===1?'triangle':'sine',(i-1)*.48,.16));
+    [0,7,12].forEach((iv,i)=>ping(p.root+24+n+iv,t+i*.014,strong ? .038 : .025,i===1?'triangle':'sine',(i-1)*.48,.16));
   };
   const cueMirror=()=>{
     if(!audio.ctx)return;const p=profile(),t=audio.ctx.currentTime+.012,m=p.root+31;
@@ -53,7 +53,7 @@ waitFor().then(game=>{
     }
     if(area()===1&&s.mirroredHits>state.lastMirror){cueMirror();mark('MIRROR HARMONY',.78);state.resolutions+=s.mirroredHits-state.lastMirror;}
     if(area()===2&&s.activeIndex!==state.lastActive&&s.activeIndex>=0){cueChroma(s.activeIndex);mark('CHROMA WEAK POINT SHIFT',.52);}
-    if(area()===3&&s.shielded!==state.lastShield){cueOrganic(!s.shielded);mark(s.shielded?'BRANCH SEVERED':'BRANCH REGROWN',s.shielded?.82:.5);if(s.shielded)state.resolutions++;}
+    if(area()===3&&s.shielded!==state.lastShield){cueOrganic(!s.shielded);mark(s.shielded?'BRANCH SEVERED':'BRANCH REGROWN',s.shielded ? .82 : .5);if(s.shielded)state.resolutions++;}
     if(area()===4&&s.chordOpen&&!state.lastChord){cueChord();mark('CHORD RESOLVED',1);state.resolutions++;window.__pulseTopologyMorph?.trigger?.();}
 
     state.lastLive=s.live.length;state.lastActive=s.activeIndex;state.lastMirror=s.mirroredHits;state.lastShield=s.shielded;state.lastChord=s.chordOpen;
@@ -67,7 +67,7 @@ waitFor().then(game=>{
     const accent=new THREE.Color(p.colors?.[1]??0xffffff),q=clamp(state.pulse,0,1);
     w.mat.color.lerp(accent,.12+q*.24);w.mat.opacity=clamp((w.mat.opacity||.1)+q*.055,.05,.24);
     w.packetMat.color.lerp(accent,.2+q*.35);w.packetMat.opacity=clamp((w.packetMat.opacity||.4)+q*.12,.3,.88);
-    const breathe=1+q*(a===3?.024:a===4?.018:.012);w.root.scale.setScalar(breathe);
+    const breathe=1+q*(a===3 ? .024 : a===4 ? .018 : .012);w.root.scale.setScalar(breathe);
     if(a===1)w.root.rotation.z+=Math.sin(t*6)*q*.0018;
     if(a===2)w.root.rotation.y+=Math.sin(t*4.5)*q*.0025;
   };
