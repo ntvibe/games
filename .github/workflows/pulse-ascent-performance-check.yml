@@ -1,0 +1,83 @@
+name: Pulse Ascent adaptive performance check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/performance-director.js'
+      - 'pulse-ascent/mobile-settings.js'
+      - 'pulse-ascent/service-worker.js'
+      - '.github/workflows/pulse-ascent-performance-check.yml'
+  workflow_dispatch:
+jobs:
+  adaptive-performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/performance-director.js
+          node --check --input-type=module < pulse-ascent/mobile-settings.js
+          grep -q "performance-director.js" pulse-ascent/mobile-settings.js
+          grep -q "performance-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v24" pulse-ascent/service-worker.js
+          grep -q "sustained-low-fps" pulse-ascent/performance-director.js
+          grep -q "sustained-recovery" pulse-ascent/performance-director.js
+          grep -q "packetGeo.*setDrawRange" pulse-ascent/performance-director.js
+          grep -q "burstScale" pulse-ascent/performance-director.js
+          grep -q "__pulsePerformanceDirector" pulse-ascent/performance-director.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run local server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-perf-server.log 2>&1 &
+          sleep 2
+      - name: Exercise adaptive budgets in WebGL
+        run: |
+          cat >/tmp/pulse-perf.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-performance-evidence';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.waitForFunction(()=>window.__pulseSettings&&window.__pulsePerformanceDirector&&window.__pulseTopologyWorlds,{timeout:15000});
+          await page.tap('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
+          await page.waitForFunction(()=>window.__pulseModelFusion?.ready===true,{timeout:12000}).catch(()=>{});
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent;
+            g.spawnEnemy('drone',new THREE.Vector3?.(0,0,-20));
+          }).catch(()=>{});
+          await page.evaluate(()=>window.__pulsePerformanceDirector.forceTier(2));await page.waitForTimeout(220);
+          const lean=await page.evaluate(()=>{
+            const perf=window.__pulsePerformanceDirector.stats(),top=window.__pulseTopologyWorlds.worlds[window.__pulseTopologyWorlds.area-1],field=window.__pulseGenerativeDirector?.field;
+            return {perf,packetDraw:top?.packetGeo?.drawRange?.count,packetCount:top?.packetCount,fieldDraw:field?.geo?.drawRange?.count,fieldCount:field?.count};
+          });
+          if(lean.perf.tier!==2||lean.perf.burstScale>.5||lean.perf.trailStride!==3)throw new Error(`LEAN budget failed: ${JSON.stringify(lean)}`);
+          if(!(lean.packetDraw<lean.packetCount)||!(lean.fieldDraw<lean.fieldCount))throw new Error(`Decorative draw budget failed: ${JSON.stringify(lean)}`);
+          if(lean.perf.targetPixelRatio>1.01)throw new Error(`Mobile DPR was not reduced: ${JSON.stringify(lean.perf)}`);
+          await page.screenshot({path:`${out}/01-lean-gameplay-mobile.png`});
+          await page.evaluate(()=>{window.__pulseSettings.state.graphics='quality';window.__pulseSettings.apply();window.__pulsePerformanceDirector.releaseForce();});await page.waitForTimeout(180);
+          const quality=await page.evaluate(()=>window.__pulsePerformanceDirector.stats());if(quality.tier!==0||quality.mode!=='quality')throw new Error(`QUALITY mode failed: ${JSON.stringify(quality)}`);
+          await page.evaluate(()=>{window.__pulseSettings.state.graphics='battery';window.__pulseSettings.apply();});await page.waitForTimeout(180);
+          const battery=await page.evaluate(()=>window.__pulsePerformanceDirector.stats());if(battery.tier!==2||battery.mode!=='battery')throw new Error(`BATTERY mode failed: ${JSON.stringify(battery)}`);
+          await page.evaluate(()=>window.__pulseSettings.open());await page.waitForTimeout(100);await page.screenshot({path:`${out}/02-battery-settings-mobile.png`});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({lean,quality,battery,errors},null,2));await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          NODE
+          node /tmp/pulse-perf.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-performance-evidence
+          path: pulse-ascent-performance-evidence/
+          if-no-files-found: warn
+          retention-days: 7
