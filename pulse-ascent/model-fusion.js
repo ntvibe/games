@@ -64,7 +64,7 @@ function assembleType(type,templates,primary,secondary){
   normalize(root,TYPE_SCALE[type]||TYPE_SCALE.drone);return root;
 }
 
-function addBossShell(game,boss,templates,primary,secondary){
+function addBossShell(boss,templates,primary,secondary){
   const root=new THREE.Group();root.name='fusion-boss-model';boss.group.add(root);
   const keys=['machine','tank','pipe','machine','tank','pipe','machine','tank'];
   const count=mobile()?6:8;
@@ -118,7 +118,7 @@ waitFor().then(async game=>{
   const tick=()=>{
     for(const enemy of game.enemies)styleEnemy(enemy);
     const boss=game.boss;
-    if(boss&&boss!==lastBoss){lastBoss=boss;const [primary,secondary]=AREA_COLORS[area()]||AREA_COLORS[0];bossShell=addBossShell(game,boss,templates,primary,secondary);}
+    if(boss&&boss!==lastBoss){lastBoss=boss;const [primary,secondary]=AREA_COLORS[area()]||AREA_COLORS[0];bossShell=addBossShell(boss,templates,primary,secondary);}
     if(!boss&&lastBoss){lastBoss=null;bossShell=null;}
     if(bossShell&&boss&&!boss.dead){
       const phase=Math.max(1,boss.phase||1),t=game.time||0;
