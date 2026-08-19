@@ -1,0 +1,69 @@
+name: Pulse Ascent traversal mastery check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-traversal-mastery-check.yml'
+  workflow_dispatch:
+jobs:
+  traversal-webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check traversal mastery
+        run: node --check --input-type=module < pulse-ascent/traversal-mastery.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 > /tmp/pulse-traversal-server.log 2>&1 &
+          sleep 2
+      - name: Exercise rhythm gates in WebGL
+        run: |
+          cat > /tmp/pulse-traversal-check.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-traversal-evidence';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseAreaSetpieces&&window.__pulseTraversalSetpieces&&window.__pulseTraversalMastery,{timeout:15000});
+          await page.evaluate(()=>window.__pulseAreaSetpieces.trigger(1));await page.waitForTimeout(250);
+          const baseline=await page.evaluate(()=>({score:window.__pulseAscent.score,sync:window.__pulseAscent.sync,traversal:window.__pulseTraversalSetpieces.stats()}));
+          if(!baseline.traversal.active)throw new Error(`Traversal did not activate: ${JSON.stringify(baseline)}`);
+          await page.evaluate(()=>window.__pulseTraversalMastery.forceGate(0));await page.waitForTimeout(820);
+          const gate=await page.evaluate(()=>{const m=window.__pulseTraversalMastery.stats(),g=window.__pulseAscent,o=g.scene.getObjectByName('traversal-rhythm-gate');g.pointer.x=m.gate.x;g.pointer.y=m.gate.y;return{...m,blend:o?.children?.[0]?.material?.blending,normal:window.THREE?.NormalBlending??1};});
+          if(!gate.active||!gate.visible||gate.gate?.risk||gate.blend!==1)throw new Error(`Standard rhythm gate invalid: ${JSON.stringify(gate)}`);
+          await page.screenshot({path:`${out}/01-rhythm-gate-mobile.png`,fullPage:true});
+          const hit=await page.evaluate(()=>{const m=window.__pulseTraversalMastery,g=window.__pulseAscent,ok=m.tryGate(.92);return{ok,stats:m.stats(),score:g.score,sync:g.sync};});
+          if(!hit.ok||hit.stats.hits<1||hit.stats.lastAward<=0||hit.score<=baseline.score||hit.sync<=baseline.sync)throw new Error(`Rhythm gate reward invalid: ${JSON.stringify(hit)}`);
+          await page.evaluate(()=>window.__pulseTraversalMastery.forceGate(2));await page.waitForTimeout(760);
+          const risk=await page.evaluate(()=>{const m=window.__pulseTraversalMastery.stats(),g=window.__pulseAscent;g.pointer.x=m.gate.x;g.pointer.y=m.gate.y;return m;});
+          if(!risk.gate?.risk||!risk.visible)throw new Error(`Overdrive route gate invalid: ${JSON.stringify(risk)}`);
+          await page.screenshot({path:`${out}/02-overdrive-route-mobile.png`,fullPage:true});
+          const riskHit=await page.evaluate(()=>{const m=window.__pulseTraversalMastery,g=window.__pulseAscent,ok=m.tryGate(.94);return{ok,stats:m.stats(),score:g.score,sync:g.sync};});
+          if(!riskHit.ok||riskHit.stats.hits<2||riskHit.stats.streak<2)throw new Error(`Overdrive gate hit invalid: ${JSON.stringify(riskHit)}`);
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({baseline,gate,hit,risk,riskHit,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({baseline,hit,riskHit},null,2));
+          NODE
+          node /tmp/pulse-traversal-check.mjs
+      - name: Upload traversal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-traversal-evidence
+          path: pulse-ascent-traversal-evidence/
+          if-no-files-found: warn
+          retention-days: 7
