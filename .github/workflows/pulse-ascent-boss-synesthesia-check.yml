@@ -1,0 +1,28 @@
+name: Pulse Ascent boss synesthesia check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-boss-synesthesia-check.yml'
+  workflow_dispatch:
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate boss synesthesia module
+        run: |
+          node --check --input-type=module < pulse-ascent/boss-synesthesia.js
+          grep -q "boss-synesthesia.js" pulse-ascent/index.html
+          grep -q "boss-synesthesia.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v11" pulse-ascent/service-worker.js
+          grep -q "__pulseBossSynesthesia" pulse-ascent/boss-synesthesia.js
+          grep -q "BUS NODE RESOLVED" pulse-ascent/boss-synesthesia.js
+          grep -q "MIRROR HARMONY" pulse-ascent/boss-synesthesia.js
+          grep -q "CHROMA WEAK POINT SHIFT" pulse-ascent/boss-synesthesia.js
+          grep -q "BRANCH REGROWN" pulse-ascent/boss-synesthesia.js
+          grep -q "CHORD RESOLVED" pulse-ascent/boss-synesthesia.js
+          grep -q "__pulseTopologyMorph" pulse-ascent/boss-synesthesia.js
