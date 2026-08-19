@@ -21,10 +21,7 @@ function finishTemplate(src,key){
   const root=src.clone(true);root.name=`fusion-template-${key}`;
   root.traverse(node=>{
     if(!node.isMesh)return;
-    node.material=new THREE.MeshStandardMaterial({
-      color:0x070b10,emissive:0x101820,emissiveIntensity:.08,metalness:.82,roughness:.34,
-      flatShading:true,transparent:true,opacity:.82,depthWrite:true,blending:THREE.NormalBlending
-    });
+    node.material=new THREE.MeshStandardMaterial({color:0x070b10,emissive:0x101820,emissiveIntensity:.08,metalness:.82,roughness:.34,flatShading:true,transparent:true,opacity:.82,depthWrite:true,blending:THREE.NormalBlending});
     node.castShadow=false;node.receiveShadow=false;
     if(node.geometry){
       const edge=new THREE.LineSegments(new THREE.EdgesGeometry(node.geometry,31),new THREE.LineBasicMaterial({color:0xb9f9ff,transparent:true,opacity:.22,depthWrite:false,blending:THREE.NormalBlending}));
@@ -35,8 +32,7 @@ function finishTemplate(src,key){
 }
 
 function cloneTinted(template,primary,secondary,size=1){
-  const obj=template.clone(true);obj.name='rez-volume-model';obj.scale.multiplyScalar(size);
-  let meshIndex=0;
+  const obj=template.clone(true);obj.name='rez-volume-model';obj.scale.multiplyScalar(size);let meshIndex=0;
   obj.traverse(node=>{
     if(node.isMesh){
       const mat=node.material.clone();mat.color.set(0x05080d);mat.emissive.set(meshIndex%2?secondary:primary);mat.emissiveIntensity=.06;mat.opacity=.76;node.material=mat;meshIndex++;
@@ -66,13 +62,11 @@ function assembleType(type,templates,primary,secondary){
 
 function addBossShell(boss,templates,primary,secondary){
   const root=new THREE.Group();root.name='fusion-boss-model';boss.group.add(root);
-  const keys=['machine','tank','pipe','machine','tank','pipe','machine','tank'];
-  const count=mobile()?6:8;
+  const keys=['machine','tank','pipe','machine','tank','pipe','machine','tank'],count=mobile()?6:8;
   for(let i=0;i<count;i++){
     const t=templates.get(keys[i]);if(!t)continue;
     const a=i/count*Math.PI*2,o=cloneTinted(t,primary,secondary,.72+(i%3)*.08);
-    o.position.set(Math.cos(a)*2.25,Math.sin(a)*1.55,(i%2?-.28:.28));
-    o.rotation.set(a*.16,-a,a+Math.PI/2);o.userData.baseAngle=a;root.add(o);
+    o.position.set(Math.cos(a)*2.25,Math.sin(a)*1.55,i%2?-.28:.28);o.rotation.set(a*.16,-a,a+Math.PI/2);o.userData.baseAngle=a;root.add(o);
   }
   boss.__fusionModel=root;return root;
 }
@@ -103,8 +97,13 @@ waitFor().then(async game=>{
     if(baseUpdate)enemy.update=(dt,t)=>{
       baseUpdate(dt,t);if(enemy.dead||!enemy.__fusionModel)return;
       const m=enemy.__fusionModel,age=Math.max(0,enemy.age||0),appear=1-Math.exp(-age*5.5),beat=game.audio?.beatDur?((game.audio.ctx?.currentTime||t)/game.audio.beatDur)%1:0,pulse=Math.pow(Math.max(0,Math.cos(beat*Math.PI*2)),12);
-      m.scale.setScalar(.08+appear*.92);m.rotation.y+=dt*(.12+(enemy.type==='sentinel'?.16:.04));m.rotation.z=Math.sin(t*.7+(enemy.phase||0))*.05;
-      m.traverse(n=>{if(n.isMesh&&n.material){n.material.emissiveIntensity=(enemy.locked?.16:.05)+pulse*.025;}else if(n.isLineSegments&&n.name==='fusion-edge')n.material.opacity=enemy.locked?.5:.2+pulse*.04;});
+      m.scale.setScalar(.08+appear*.92);
+      m.rotation.y+=dt*(.12+(enemy.type==='sentinel' ? .16 : .04));
+      m.rotation.z=Math.sin(t*.7+(enemy.phase||0))*.05;
+      m.traverse(n=>{
+        if(n.isMesh&&n.material)n.material.emissiveIntensity=(enemy.locked ? .16 : .05)+pulse*.025;
+        else if(n.isLineSegments&&n.name==='fusion-edge')n.material.opacity=enemy.locked ? .5 : .2+pulse*.04;
+      });
     };
     return enemy;
   };
@@ -129,13 +128,11 @@ waitFor().then(async game=>{
       });
     }
     requestAnimationFrame(tick);
-  };requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 
   window.__pulseModelFusion={
-    get ready(){return templates.size>=3;},
-    errors,
-    templates:[...templates.keys()],
-    styleEnemy,
+    get ready(){return templates.size>=3;},errors,templates:[...templates.keys()],styleEnemy,
     stats:()=>({ready:templates.size>=3,templates:templates.size,styled:game.enemies.filter(e=>e.__fusionModel&&!e.dead).length,boss:!!bossShell,mobile:mobile()})
   };
 });
