@@ -1,0 +1,100 @@
+name: Pulse Ascent onboarding check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-onboarding-check.yml'
+  workflow_dispatch:
+jobs:
+  onboarding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check integration and syntax
+        run: |
+          node --check --input-type=module < pulse-ascent/onboarding.js
+          grep -q "onboarding.js" pulse-ascent/index.html
+          grep -q "onboarding.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v26" pulse-ascent/service-worker.js
+          grep -q "SIGNAL CALIBRATION" pulse-ascent/onboarding.js
+          grep -q "RELEASE ON THE PULSE" pulse-ascent/onboarding.js
+          grep -q "PAINT 4+ TARGETS" pulse-ascent/onboarding.js
+          grep -q "SKIP CALIBRATION" pulse-ascent/onboarding.js
+          grep -q "pulse-ascent-onboarding-v1" pulse-ascent/onboarding.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 > /tmp/pulse-onboarding-server.log 2>&1 &
+          sleep 2
+      - name: Exercise contextual calibration in WebGL
+        run: |
+          cat > /tmp/pulse-onboarding.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-onboarding-evidence';fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.evaluate(()=>localStorage.removeItem('pulse-ascent-onboarding-v1'));
+          await page.reload({waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseOnboarding?.stats().active,{timeout:15000});
+          let s=await page.evaluate(()=>window.__pulseOnboarding.stats());
+          if(s.step!==1)throw new Error(`Expected vector tutorial first: ${JSON.stringify(s)}`);
+
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent;
+            g.pointerMove({clientX:40,clientY:300});g.pointerMove({clientX:330,clientY:540});g.pointerMove({clientX:80,clientY:250});
+          });
+          await page.waitForFunction(()=>window.__pulseOnboarding.stats().step===2);
+          await page.screenshot({path:`${out}/01-lock-training-mobile.png`});
+
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent,e=g.enemies.find(x=>!x.dead&&x.type!=='danger');
+            if(!e)throw new Error('No training enemy');
+            const p=e.group.getWorldPosition(new window.THREE?.Vector3?.()||undefined);
+          }).catch(()=>{});
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent,e=g.enemies.find(x=>!x.dead&&x.type!=='danger');
+            const p=e.group.position.clone();p.project(g.camera);g.pointer.x=p.x;g.pointer.y=p.y;g.pointer.down=true;g.tryLock(true);
+          });
+          await page.waitForFunction(()=>window.__pulseOnboarding.stats().step===3);
+          await page.evaluate(()=>window.__pulseAscent.scoreTiming(.94,1));
+          await page.waitForFunction(()=>window.__pulseOnboarding.stats().step===4);
+          await page.screenshot({path:`${out}/02-multilock-training-mobile.png`});
+          await page.evaluate(()=>window.__pulseAscent.scoreTiming(.94,4));
+          await page.waitForFunction(()=>window.__pulseOnboarding.stats().step===5&&window.__pulseAscent.overdrive>=99);
+          await page.screenshot({path:`${out}/03-overdrive-training-mobile.png`});
+          await page.evaluate(()=>window.__pulseAscent.triggerOverdrive());
+          await page.waitForFunction(()=>document.querySelector('#calibrationCard')?.classList.contains('calibration-complete'),{timeout:3000});
+          await page.screenshot({path:`${out}/04-calibration-complete-mobile.png`});
+          await page.waitForFunction(()=>!window.__pulseOnboarding.stats().active&&window.__pulseOnboarding.stats().completed,{timeout:4000});
+          const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('pulse-ascent-onboarding-v1')||'{}'));
+          if(!stored.completed)throw new Error(`Completion did not persist: ${JSON.stringify(stored)}`);
+
+          await page.reload({waitUntil:'networkidle'});
+          await page.click('#startBtn');await page.waitForTimeout(900);
+          const noRepeat=await page.evaluate(()=>({running:window.__pulseAscent?.running,onboarding:window.__pulseOnboarding?.stats()}));
+          if(!noRepeat.running||noRepeat.onboarding?.active)throw new Error(`Completed onboarding repeated automatically: ${JSON.stringify(noRepeat)}`);
+          if(errors.length)throw new Error(errors.join('\n'));
+          await browser.close();
+          NODE
+          node /tmp/pulse-onboarding.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pulse-ascent-onboarding-evidence
+          path: pulse-ascent-onboarding-evidence
