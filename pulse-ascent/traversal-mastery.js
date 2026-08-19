@@ -42,6 +42,7 @@ waitFor().then(game=>{
   const setpiece=()=>window.__pulseAreaSetpieces?.stats?.()||{};
   const traversal=()=>window.__pulseTraversalSetpieces?.stats?.()||{};
   const areaRoute=(area,index)=>ROUTES[clamp(area,0,4)][clamp(index,0,2)];
+  const emit=(name,detail)=>window.dispatchEvent(new CustomEvent(name,{detail}));
 
   function worldAtNdc(nx,ny,z){
     const p=new THREE.Vector3(nx,ny,.35).unproject(game.camera),dir=p.sub(game.camera.position).normalize();
@@ -58,17 +59,20 @@ waitFor().then(game=>{
 
   function resolveGate(success,q=0){
     const gate=state.gate;if(!gate||gate.resolved)return false;gate.resolved=true;
+    let award=0,routeMastered=false;
     if(success){
       state.hits++;state.streak++;state.bestStreak=Math.max(state.bestStreak,state.streak);
-      const quality=clamp(q,0,1),base=700+state.section*260,award=Math.round(base*(gate.risk?1.9:1)*(1+Math.min(4,state.streak-1)*.18)*(.72+quality*.55));
+      const quality=clamp(q,0,1),base=700+state.section*260;award=Math.round(base*(gate.risk?1.9:1)*(1+Math.min(4,state.streak-1)*.18)*(.72+quality*.55));
       state.lastAward=award;game.score+=award;game.sync=clamp(game.sync+(gate.risk?5:3)+(quality>.86?2:0),0,100);game.overdrive=clamp(game.overdrive+(gate.risk?9:5),0,100);game.updateHud?.();
       game.audio.syncNote?.(Math.max(.7,q));game.haptic?.(gate.risk?[8,8,18]:[6,5,10]);
       game.particles.burst(visual.root.position.clone(),gate.risk?34:22,COLORS[state.area],gate.risk?5.5:3.8,8);
       game.showCallout?.(`${gate.risk?'OVERDRIVE GATE':'RHYTHM GATE'} +${award}`,q);
-      if(state.sequence===3&&state.streak>=3){state.routeClears++;const clear=2400+state.section*650;game.score+=clear;game.sync=clamp(game.sync+4,0,100);game.updateHud?.();game.showCallout?.(`ROUTE MASTERED +${clear}`,1);window.__pulseTopologyMorph?.trigger?.();}
+      if(state.sequence===3&&state.streak>=3){state.routeClears++;const clear=2400+state.section*650;game.score+=clear;game.sync=clamp(game.sync+4,0,100);game.updateHud?.();game.showCallout?.(`ROUTE MASTERED +${clear}`,1);window.__pulseTopologyMorph?.trigger?.();routeMastered=true;}
     }else{
       state.misses++;state.streak=0;game.showCallout?.('ROUTE MISSED',.2);
     }
+    emit('pulse:traversal-gate',{area:state.area+1,section:state.section,index:gate.index,risk:gate.risk,success,quality:clamp(q,0,1),streak:state.streak,award});
+    if(routeMastered)emit('pulse:route-mastered',{area:state.area+1,section:state.section,routeClears:state.routeClears});
     return success;
   }
 
