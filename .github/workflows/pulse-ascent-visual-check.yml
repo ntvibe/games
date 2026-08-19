@@ -40,11 +40,15 @@ jobs:
           }
           const desktop=await browser.newContext({viewport:{width:1440,height:900}});const page=await desktop.newPage();await attach(page,'desktop');
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.screenshot({path:`${out}/01-start-desktop.png`});
-          await page.click('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await page.waitForFunction(()=>window.__pulsePilot?.rig&&window.__pulseExpansion?.assets,{timeout:12000});await page.waitForFunction(()=>window.__pulseTopologyWorlds?.worlds?.length===5,{timeout:12000});await page.waitForTimeout(1800);
+          await page.click('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await page.waitForFunction(()=>window.__pulsePilot?.rig&&window.__pulseExpansion?.assets&&window.__pulseAreaSetpieces,{timeout:12000});await page.waitForFunction(()=>window.__pulseTopologyWorlds?.worlds?.length===5,{timeout:12000});await page.waitForTimeout(1800);
 
           const topology=await page.evaluate(()=>{const t=window.__pulseTopologyWorlds,g=window.__pulseAscent,a=t.area-1,w=t.worlds[a];return{area:t.area,layer:t.layer,segments:w?.totalSegments||0,visible:!!w?.root?.visible,primitiveVisible:!!g.scene.getObjectByName('generative-architecture')?.visible,packets:w?.packetCount||0};});
           if(!topology.visible||topology.primitiveVisible||topology.segments<70||topology.packets<20)throw new Error(`Topology world invalid: ${JSON.stringify(topology)}`);
           await page.screenshot({path:`${out}/02-topology-desktop.png`});
+
+          const setpiece=await page.evaluate(()=>{const g=window.__pulseAscent,s=window.__pulseAreaSetpieces;const fired=s.trigger(1),before=g.enemies.length,bar=s.stats().suppressedBar;g.spawnPattern(bar);const after=g.enemies.length;return{...s.stats(),fired,enemies:after,genericSuppressed:after===before};});
+          if(!setpiece.fired||!setpiece.active||setpiece.name!=='DATA CONVOY'||setpiece.enemies<7||!setpiece.genericSuppressed)throw new Error(`Area setpiece invalid: ${JSON.stringify(setpiece)}`);
+          await page.waitForTimeout(350);await page.screenshot({path:`${out}/02b-setpiece-desktop.png`});
 
           const pilot=await page.evaluate(()=>({stats:window.__pulsePilot.stats(),meshes:window.__pulsePilot.rig.meshes.length,fragments:window.__pulsePilot.rig.fragments.geometry.attributes.position.count,controls:!!document.querySelector('#pilotControls'),weaponText:document.querySelector('#weaponCycle b')?.textContent,speedText:document.querySelector('#speedCycle b')?.textContent,avatarY:window.__pulseAscent.world.avatar.position.y}));
           if(!pilot.stats.humanoid||pilot.meshes<16||pilot.fragments<180||!pilot.controls||pilot.weaponText!=='LOCK//8'||pilot.stats.speed<1.2||pilot.avatarY<-2.5)throw new Error(`Pilot system invalid: ${JSON.stringify(pilot)}`);
@@ -85,15 +89,15 @@ jobs:
           await page.screenshot({path:`${out}/08-boss-topology-desktop.png`});await desktop.close();
 
           const mobile=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});const mp=await mobile.newPage();await attach(mp,'mobile');
-          await mp.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await mp.screenshot({path:`${out}/09-start-mobile.png`});await mp.tap('#startBtn');await mp.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await mp.waitForFunction(()=>window.__pulsePilot?.rig&&window.__pulseExpansion?.assets?.ready===true&&window.__pulseTopologyWorlds?.worlds?.length===5,{timeout:15000});await mp.waitForTimeout(900);
+          await mp.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await mp.screenshot({path:`${out}/09-start-mobile.png`});await mp.tap('#startBtn');await mp.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});await mp.waitForFunction(()=>window.__pulsePilot?.rig&&window.__pulseExpansion?.assets?.ready===true&&window.__pulseTopologyWorlds?.worlds?.length===5&&window.__pulseAreaSetpieces,{timeout:15000});await mp.waitForTimeout(900);
           const mobileTopology=await mp.evaluate(()=>{const t=window.__pulseTopologyWorlds,w=t.worlds[t.area-1];return{visible:!!w?.root?.visible,segments:w?.totalSegments||0,packets:w?.packetCount||0,primitiveVisible:!!window.__pulseAscent.scene.getObjectByName('generative-architecture')?.visible};});
           if(!mobileTopology.visible||mobileTopology.primitiveVisible||mobileTopology.segments<70||mobileTopology.packets<20)throw new Error(`Mobile topology invalid: ${JSON.stringify(mobileTopology)}`);
           await mp.evaluate(()=>window.__pulseExpansion.startTestRupture());await mp.waitForTimeout(900);await mp.screenshot({path:`${out}/10-free-vector-mobile.png`,fullPage:true});
           const mobileState=await mp.evaluate(()=>({overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight],hud:document.querySelector('#hud').getBoundingClientRect().toJSON(),controls:document.querySelector('#pilotControls').getBoundingClientRect().toJSON(),sync:document.querySelector('#sync').textContent,mode:window.__pulseExpansion?.state.mode,assets:window.__pulseExpansion?.assets.models.size,chip:document.querySelector('#modeChip')?.textContent,pilot:window.__pulsePilot.stats()}));
           if(mobileState.overflow[0]>1||mobileState.overflow[1]>1||mobileState.mode!=='rupture'||mobileState.assets<4||!mobileState.pilot.humanoid||mobileState.controls.right>390||mobileState.controls.left<0)throw new Error(`Mobile rupture invalid: ${JSON.stringify(mobileState)}`);await mobile.close();await browser.close();
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({topology,pilot,combat,threat,threatAfter,speedState,rupture,boss,mobileTopology,mobileState,errors},null,2));
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({topology,setpiece,pilot,combat,threat,threatAfter,speedState,rupture,boss,mobileTopology,mobileState,errors},null,2));
           if(errors.length)throw new Error(errors.join('\n'));
-          console.log(JSON.stringify({topology,pilot,combat,threat,threatAfter,speedState,rupture,boss,mobileTopology,mobileState},null,2));
+          console.log(JSON.stringify({topology,setpiece,pilot,combat,threat,threatAfter,speedState,rupture,boss,mobileTopology,mobileState},null,2));
           NODE
           node /tmp/pulse-gauntlet.mjs
       - name: Upload visual evidence
