@@ -14,11 +14,11 @@ function makePath(scene){
   const lines=[];
   for(let lane=0;lane<3;lane++){
     const pos=new Float32Array(count*3),geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-    const mat=new THREE.LineBasicMaterial({color:COLORS[0],transparent:true,opacity:lane===1?.18:.1,blending:THREE.NormalBlending,depthWrite:false,depthTest:true});
+    const mat=new THREE.LineBasicMaterial({color:COLORS[0],transparent:true,opacity:lane===1 ? .18 : .1,blending:THREE.NormalBlending,depthWrite:false,depthTest:true});
     const line=new THREE.Line(geo,mat);line.frustumCulled=false;root.add(line);lines.push({line,geo,mat,pos,lane});
   }
   const packetCount=mobile?14:22,packetPos=new Float32Array(packetCount*3),packetGeo=new THREE.BufferGeometry();packetGeo.setAttribute('position',new THREE.BufferAttribute(packetPos,3));
-  const packetMat=new THREE.PointsMaterial({color:0xffffff,size:mobile?.045:.035,transparent:true,opacity:.35,blending:THREE.NormalBlending,depthWrite:false,sizeAttenuation:true});
+  const packetMat=new THREE.PointsMaterial({color:0xffffff,size:mobile ? .045 : .035,transparent:true,opacity:.35,blending:THREE.NormalBlending,depthWrite:false,sizeAttenuation:true});
   const packets=new THREE.Points(packetGeo,packetMat);packets.frustumCulled=false;root.add(packets);
   return {root,lines,count,packets,packetGeo,packetMat,packetPos,packetCount};
 }
@@ -28,7 +28,6 @@ waitFor().then(game=>{
   const path=makePath(game.scene);
   let active=false,area=0,section=0,mode=MODES[0],phase=0,blend=0,lastSetpieceKey='',routeBias=0;
 
-  const selectedArea=()=>clamp((window.__pulseCampaign?.state?.selected||1)-1,0,4);
   const setpieceState=()=>window.__pulseAreaSetpieces?.stats?.()||{};
   const topology=()=>window.__pulseTopologyWorlds?.worlds?.[area];
 
@@ -69,7 +68,7 @@ waitFor().then(game=>{
         const u=i/(path.count-1),p=shape(u,t,l.lane),j=i*3;arr[j]=p.x;arr[j+1]=p.y;arr[j+2]=p.z;
       }
       l.geo.attributes.position.needsUpdate=true;
-      l.mat.opacity=(l.lane===1?.16:.085)*blend*(.8+.2*Math.sin(t*2+l.lane));
+      l.mat.opacity=(l.lane===1 ? .16 : .085)*blend*(.8+.2*Math.sin(t*2+l.lane));
     }
     for(let i=0;i<path.packetCount;i++){
       const u=(i/path.packetCount+t*(.12+.02*section))%1,p=shape(u,t,i%3),j=i*3;
@@ -84,7 +83,7 @@ waitFor().then(game=>{
     const stats=setpieceState(),key=`${stats.area||0}:${stats.section||0}:${stats.name||''}`;
     const nowActive=!!stats.active;
     if(nowActive&&(!active||key!==lastSetpieceKey)){lastSetpieceKey=key;begin(stats);}
-    active=nowActive;blend=lerp(blend,active?1:0,1-Math.pow(active?.015:.08,dt));phase+=dt*(1.1+energy*.5+section*.12);
+    active=nowActive;blend=lerp(blend,active?1:0,1-Math.pow(active ? .015 : .08,dt));phase+=dt*(1.1+energy*.5+section*.12);
     if(area===3&&active&&Math.abs(game.pointer?.x||0)>.16)routeBias=lerp(routeBias,Math.sign(game.pointer.x),clamp(dt*4,0,1));
     if(blend<.015&&!active){path.root.visible=false;return;}path.root.visible=true;updateGeometry(t);
 
