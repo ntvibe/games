@@ -74,7 +74,8 @@ waitFor().then(game=>{
     const boss=state.boss;if(!boss||boss.dead||!state.shell){state.tethers.geo.setDrawRange(0,0);state.tethers.pm.opacity=0;return;}
     if(!boss.__topologyRewriteInstalled)patchBoss(boss);
     state.phase=boss.phase;state.phaseShock=lerp(state.phaseShock,0,1-Math.pow(.015,dt));
-    const charge=window.__pulseBossBody?.state?.mode==='charge'?1:window.__pulseBossBody?.state?.mode==='recover'?.45:0;
+    const mode=window.__pulseBossBody?.state?.mode;
+    const charge=mode==='charge'?1:(mode==='recover'?.45:0);
     const phaseN=(boss.phase-1)/2,intensity=clamp(.2+energy*.25+sync*.18+charge*.28+state.phaseShock*.3,0,1);
     const profile=topology.profiles?.[state.area],c0=profile?.colors?.[0]??0x7ef7ff,c1=profile?.colors?.[1]??0xff6bd8;
     state.shell.mat.color.set(c0).lerp(new THREE.Color(c1),.18+phaseN*.38+charge*.18);state.shell.mat.opacity=clamp(.13+phaseN*.07+intensity*.09,.12,.34);state.shell.nodeMat.color.set(c1);state.shell.nodeMat.opacity=clamp(.36+intensity*.32,.3,.76);state.shell.group.rotation.z+=dt*(.08+boss.phase*.055)*(state.area%2?-1:1);state.shell.group.scale.setScalar(1+charge*.08+state.phaseShock*.055+Math.sin(t*2.1)*.012);
@@ -83,12 +84,11 @@ waitFor().then(game=>{
 
     const w=topology.worlds?.[state.area],attr=w?.geo?.attributes?.position,activeVertices=Math.max(2,Math.min(attr?.count||2,w?.geo?.drawRange?.count||attr?.count||2));const living=boss.parts.filter(p=>!p.dead),activeTethers=Math.min(state.tethers.count,[4,7,10][boss.phase-1]||10);
     if(w&&attr&&living.length){
-      const bossCenter=boss.group.getWorldPosition(new THREE.Vector3()),src=new THREE.Vector3(),end=new THREE.Vector3();
+      const src=new THREE.Vector3(),end=new THREE.Vector3();
       for(let i=0;i<activeTethers;i++){const vi=Math.min(activeVertices-1,Math.floor(((i+.35)/activeTethers)*activeVertices)),j=i*6;src.set(attr.getX(vi),attr.getY(vi),attr.getZ(vi));w.root.localToWorld(src);const part=living[i%living.length];part.pivot.getWorldPosition(end);state.tethers.pos[j]=src.x;state.tethers.pos[j+1]=src.y;state.tethers.pos[j+2]=src.z;state.tethers.pos[j+3]=end.x;state.tethers.pos[j+4]=end.y;state.tethers.pos[j+5]=end.z;const f=(t*(.34+.08*boss.phase)+i*.113)%1,k=i*3;state.tethers.pp[k]=lerp(src.x,end.x,f);state.tethers.pp[k+1]=lerp(src.y,end.y,f);state.tethers.pp[k+2]=lerp(src.z,end.z,f);}
       state.tethers.geo.setDrawRange(0,activeTethers*2);state.tethers.geo.attributes.position.needsUpdate=true;state.tethers.pg.attributes.position.needsUpdate=true;state.tethers.mat.color.set(c0);state.tethers.mat.opacity=clamp(.08+phaseN*.05+charge*.1+state.phaseShock*.1,.07,.28);state.tethers.pm.color.set(c1);state.tethers.pm.opacity=clamp(.38+intensity*.3,.32,.78);state.tethers.lines.visible=true;state.tethers.packets.visible=true;
       w.mat.opacity=Math.min(.22,(w.mat.opacity||.1)+phaseN*.025+charge*.018);w.packetMat.opacity=Math.min(.82,(w.packetMat.opacity||.4)+phaseN*.04+charge*.05);w.root.scale.setScalar(1+Math.sin(t*.55)*.006+state.phaseShock*.018);
-      if(state.phaseShock>.04){w.root.rotation.z+=Math.sin(t*5.5)*state.phaseShock*.0025;}
-      void bossCenter;
+      if(state.phaseShock>.04)w.root.rotation.z+=Math.sin(t*5.5)*state.phaseShock*.0025;
     }
   };
 
