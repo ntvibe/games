@@ -1,0 +1,83 @@
+name: Pulse Ascent weapon signature check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/weapon-signatures.js'
+      - 'pulse-ascent/player-system.js'
+      - 'pulse-ascent/pilot-performance.js'
+      - 'pulse-ascent/index.html'
+      - '.github/workflows/pulse-ascent-weapon-check.yml'
+  workflow_dispatch:
+jobs:
+  weapon-webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: node --check --input-type=module < pulse-ascent/weapon-signatures.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start local server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-weapon-server.log 2>&1 &
+          sleep 2
+      - name: Exercise LANCE and SWARM signatures
+        run: |
+          cat >/tmp/pulse-weapon-check.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-weapon-check';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:1280,height:800}});const page=await ctx.newPage();
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulsePilotPerformance&&window.__pulseWeaponSignatures,{timeout:15000});
+          await page.waitForTimeout(700);
+
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];window.__pulsePilot.cycleWeapon();
+            const origin=g.world.avatar.getWorldPosition(g.world.avatar.position.clone()).add({x:0,y:.55,z:-.5});
+            const ys=origin.y;
+            const spawn=z=>{const p=g.world.avatar.position.clone();p.set(0,ys,z);const e=g.spawnEnemy('drone',p,1);e.group.position.set(0,ys,z);e.update=()=>{};return e;};
+            const a=spawn(-12),b=spawn(-18),c=spawn(-24);g.targetsLocked=[a];a.locked=true;
+            g.releaseFire();
+          });
+          await page.waitForFunction(()=>window.__pulseWeaponSignatures.stats().lanceShots>0,{timeout:5000});
+          const lance=await page.evaluate(()=>window.__pulseWeaponSignatures.stats());
+          if(lance.pierces<1||lance.activeLances<1)throw new Error(`LANCE signature invalid: ${JSON.stringify(lance)}`);
+          await page.screenshot({path:`${out}/01-lance-pierce.png`});
+          await page.waitForTimeout(350);
+
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];window.__pulsePilot.cycleWeapon();
+            const base=g.world.avatar.getWorldPosition(g.world.avatar.position.clone()),ys=base.y+.55;
+            const pts=[[-2,ys,-14],[-.7,ys+.5,-17],[.7,ys-.35,-20],[2,ys+.25,-23]];const locks=[];
+            for(const [x,y,z] of pts){const p=g.world.avatar.position.clone();p.set(x,y,z);const e=g.spawnEnemy('drone',p,1);e.group.position.set(x,y,z);e.update=()=>{};e.locked=true;locks.push(e);}g.targetsLocked=locks;g.releaseFire();
+          });
+          await page.waitForFunction(()=>window.__pulseWeaponSignatures.stats().swarmShots>0,{timeout:5000});
+          const swarm=await page.evaluate(()=>window.__pulseWeaponSignatures.stats());
+          if(swarm.swarmShots<1||swarm.missiles<1||swarm.activeMissiles<1)throw new Error(`SWARM signature invalid: ${JSON.stringify(swarm)}`);
+          await page.screenshot({path:`${out}/02-swarm-salvo.png`});
+          await page.waitForTimeout(420);
+          const final=await page.evaluate(()=>window.__pulseWeaponSignatures.stats());
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({lance,swarm,final,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          NODE
+          node /tmp/pulse-weapon-check.mjs
+      - name: Upload weapon visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-weapon-check
+          path: pulse-ascent-weapon-check/
+          if-no-files-found: warn
+          retention-days: 7
