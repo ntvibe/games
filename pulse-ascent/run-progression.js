@@ -62,7 +62,7 @@ async function init(){
   const baseTakeHit=game.takeHit.bind(game);game.takeHit=()=>{state.damageTaken++;baseTakeHit();update()};
   const baseRestart=game.restart.bind(game);game.restart=()=>{state.damageTaken=0;state.threatIntercepts=0;state.completed.clear();baseRestart();setMission(0,'AWAKENING');update()};
   const baseFinish=game.finish.bind(game);game.finish=()=>{
-    const p=performance(game,state),score=Math.floor(game.score),previous=state.best.score||0,isBest=score>previous;
+    const p=performance(game,state),score=Math.floor(game.score),previous=state.best.score||0,direct=!!window.__pulseDirectAscent?.active,isBest=!direct&&score>previous;
     if(isBest){state.best={score,rank:p.rank,date:new Date().toISOString()};safeWrite(state.best);refreshBest()}
     baseFinish();addResultSummary();
     const finalRank=document.querySelector('#finalRank'),finalPerfect=document.querySelector('#finalPerfect'),finalDamage=document.querySelector('#finalDamage'),finalBest=document.querySelector('#finalBest');
