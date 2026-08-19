@@ -75,10 +75,10 @@ waitFor().then(game=>{
     };
     flash=lerp(flash,0,1-Math.pow(.002,dt));
     const beat=game.audio?.beatDur?((game.audio.ctx?.currentTime||t)/game.audio.beatDur)%1:0,pulse=Math.pow(Math.max(0,Math.cos(beat*Math.PI*2)),12);
-    v.solids.forEach((m,i)=>{
-      const plate=v.plates.includes(m),target=(plate?stage.plate:stage.solid)*(mobile()?.78:1);
+    v.solids.forEach(m=>{
+      const isPlate=v.plates.includes(m),target=(isPlate?stage.plate:stage.solid)*(mobile()?.78:1);
       m.material.opacity=clamp(target+flash*.08,0,.9);m.material.emissiveIntensity=.025+energy*.025+sync*.035+pulse*.02+flash*.035;
-      if(m.userData.edge)m.userData.edge.material.opacity=clamp(stage.edge+(plate?.05:0)+pulse*.04+flash*.08,.08,.82);
+      if(m.userData.edge)m.userData.edge.material.opacity=clamp(stage.edge+(isPlate?.05:0)+pulse*.04+flash*.08,.08,.82);
     });
     v.halo.material.opacity=.1+stage.edge*.28+sync*.08+pulse*.03;v.halo.rotation.z+=dt*(.22+sync*.5);
     v.root.rotation.y=Math.sin(t*.45)*.018;v.root.scale.setScalar(1+flash*.035+pulse*.008);
