@@ -53,14 +53,14 @@ waitFor().then(game=>{
     const [x,y]=areaRoute(state.area,index),risk=index===2;
     state.gate={index,start:t,duration:risk?1.5:1.62,x,y,risk,resolved:false};
     visual.root.visible=true;visual.mat.color.set(COLORS[state.area]);visual.coreMat.color.set(risk?0xffd86a:0xffffff);
-    game.showCallout?.(risk?'OVERDRIVE ROUTE // RELEASE ON BEAT':'RHYTHM GATE // RELEASE ON BEAT',risk?.92:.78);
+    game.showCallout?.(risk?'OVERDRIVE ROUTE // RELEASE ON BEAT':'RHYTHM GATE // RELEASE ON BEAT',risk ? .92 : .78);
   }
 
   function resolveGate(success,q=0){
     const gate=state.gate;if(!gate||gate.resolved)return false;gate.resolved=true;
     if(success){
       state.hits++;state.streak++;state.bestStreak=Math.max(state.bestStreak,state.streak);
-      const quality=clamp(q,0,1),base=700+state.section*260,award=Math.round(base*(gate.risk?1.9:1)*(1+Math.min(4,state.streak-1)*.18)*( .72+quality*.55));
+      const quality=clamp(q,0,1),base=700+state.section*260,award=Math.round(base*(gate.risk?1.9:1)*(1+Math.min(4,state.streak-1)*.18)*(.72+quality*.55));
       state.lastAward=award;game.score+=award;game.sync=clamp(game.sync+(gate.risk?5:3)+(quality>.86?2:0),0,100);game.overdrive=clamp(game.overdrive+(gate.risk?9:5),0,100);game.updateHud?.();
       game.audio.syncNote?.(Math.max(.7,q));game.haptic?.(gate.risk?[8,8,18]:[6,5,10]);
       game.particles.burst(visual.root.position.clone(),gate.risk?34:22,COLORS[state.area],gate.risk?5.5:3.8,8);
@@ -76,7 +76,7 @@ waitFor().then(game=>{
     const gate=state.gate;if(!state.active||!gate||gate.resolved)return false;
     const progress=clamp(((game.time||0)-gate.start)/gate.duration,0,1);if(progress<.48||progress>.98)return false;
     const px=game.pointer?.x||0,py=game.pointer?.y||0,aspect=innerWidth/Math.max(1,innerHeight),d=Math.hypot((px-gate.x)*Math.min(1.55,aspect),py-gate.y);
-    const inside=d<(gate.risk?.16:.23);
+    const inside=d<(gate.risk ? .16 : .23);
     if(!inside)return false;
     if(q<.55){game.showCallout?.('GATE // WAIT FOR GRID',.35);game.haptic?.(4);return false;}
     return resolveGate(true,q);
@@ -106,8 +106,8 @@ waitFor().then(game=>{
     const gate=state.gate;if(!gate)return;
     const p=clamp((t-gate.start)/gate.duration,0,1),z=lerp(-42,1.5,p),pos=worldAtNdc(gate.x,gate.y,z);visual.root.position.copy(pos);
     const pulse=Math.pow(Math.max(0,Math.cos(((game.audio?.ctx?.currentTime||t)/(game.audio?.beatDur||.47))*TAU)),10);
-    const baseScale=gate.risk?.82:1.08;visual.root.scale.setScalar(baseScale*(1+p*.14+pulse*.08));visual.root.rotation.z+=dt*(gate.risk?1.15:.58);
-    visual.mat.opacity=(gate.resolved?.12:.42)+pulse*.26;visual.coreMat.opacity=gate.resolved?.1:.38+pulse*.34;
+    const baseScale=gate.risk ? .82 : 1.08;visual.root.scale.setScalar(baseScale*(1+p*.14+pulse*.08));visual.root.rotation.z+=dt*(gate.risk?1.15:.58);
+    visual.mat.opacity=(gate.resolved ? .12 : .42)+pulse*.26;visual.coreMat.opacity=(gate.resolved ? .1 : .38)+pulse*.34;
     if(p>=1&&!gate.resolved)resolveGate(false,0);
     if(gate.resolved){visual.mat.opacity=lerp(visual.mat.opacity,0,clamp(dt*8,0,1));visual.coreMat.opacity=lerp(visual.coreMat.opacity,0,clamp(dt*8,0,1));if(visual.mat.opacity<.03)visual.root.visible=false;}
   };
