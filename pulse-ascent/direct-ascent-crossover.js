@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './direct-ascent-crossover-gameplay.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mobile=()=>innerWidth<760||matchMedia('(pointer: coarse)').matches;
