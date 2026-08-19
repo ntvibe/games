@@ -36,6 +36,7 @@ jobs:
           test -s pulse-ascent/topology-combat.js
           test -s pulse-ascent/enemy-art-direction.js
           test -s pulse-ascent/enemy-materialization.js
+          test -s pulse-ascent/boss-topology-rewrite.js
           test -s pulse-ascent/visual-pruning.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
           grep -q "boss-vulnerability.js" pulse-ascent/index.html
@@ -53,6 +54,7 @@ jobs:
           grep -q "topology-combat.js" pulse-ascent/index.html
           grep -q "enemy-art-direction.js" pulse-ascent/index.html
           grep -q "enemy-materialization.js" pulse-ascent/index.html
+          grep -q "boss-topology-rewrite.js" pulse-ascent/index.html
           grep -q "visual-pruning.js" pulse-ascent/index.html
           grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
@@ -90,5 +92,9 @@ jobs:
           grep -q "__pulseEnemyMaterialization" pulse-ascent/enemy-materialization.js
           grep -q "game.enemies.length>before" pulse-ascent/enemy-materialization.js
           grep -q "traceBurst(enemy,'recycle')" pulse-ascent/enemy-materialization.js
+          grep -q "__pulseBossTopology" pulse-ascent/boss-topology-rewrite.js
+          grep -q "AREA_NAMES" pulse-ascent/boss-topology-rewrite.js
+          grep -q "releaseToWorld" pulse-ascent/boss-topology-rewrite.js
+          grep -q "NormalBlending" pulse-ascent/boss-topology-rewrite.js
           grep -q "generative-architecture" pulse-ascent/visual-pruning.js
-          grep -q "pulse-ascent-v7" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v8" pulse-ascent/service-worker.js
