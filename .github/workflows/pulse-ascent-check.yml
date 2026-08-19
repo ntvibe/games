@@ -41,6 +41,7 @@ jobs:
           test -s pulse-ascent/area-boss-vulnerability.js
           test -s pulse-ascent/boss-synesthesia.js
           test -s pulse-ascent/area-setpieces.js
+          test -s pulse-ascent/traversal-setpieces.js
           test -s pulse-ascent/visual-pruning.js
           grep -q "PULSE//ASCENT" pulse-ascent/index.html
           grep -q "boss-vulnerability.js" pulse-ascent/index.html
@@ -63,6 +64,7 @@ jobs:
           grep -q "area-boss-vulnerability.js" pulse-ascent/index.html
           grep -q "boss-synesthesia.js" pulse-ascent/index.html
           grep -q "area-setpieces.js" pulse-ascent/index.html
+          grep -q "traversal-setpieces.js" pulse-ascent/index.html
           grep -q "visual-pruning.js" pulse-ascent/index.html
           grep -q "corePressurePaused" pulse-ascent/boss-consequences.js
           grep -q "EMITTER DOWN // BARRAGE WEAKENED" pulse-ascent/boss-consequences.js
@@ -124,6 +126,14 @@ jobs:
           grep -q "HUNTER GROVE" pulse-ascent/area-setpieces.js
           grep -q "CHOIR AISLE" pulse-ascent/area-setpieces.js
           grep -q "bar===state.suppressedBar" pulse-ascent/area-setpieces.js
+          grep -q "__pulseTraversalSetpieces" pulse-ascent/traversal-setpieces.js
+          grep -q "LANE COLLAPSE" pulse-ascent/traversal-setpieces.js
+          grep -q "ROTATING PASSAGE" pulse-ascent/traversal-setpieces.js
+          grep -q "CURRENT RIDE" pulse-ascent/traversal-setpieces.js
+          grep -q "BRANCH ROUTE" pulse-ascent/traversal-setpieces.js
+          grep -q "CATHEDRAL GATE" pulse-ascent/traversal-setpieces.js
+          grep -q "NormalBlending" pulse-ascent/traversal-setpieces.js
           grep -q "generative-architecture" pulse-ascent/visual-pruning.js
           grep -q "area-setpieces.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v12" pulse-ascent/service-worker.js
+          grep -q "traversal-setpieces.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v13" pulse-ascent/service-worker.js
