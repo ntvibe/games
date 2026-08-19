@@ -17,10 +17,15 @@ jobs:
       - name: Syntax and integration
         run: |
           node --check --input-type=module < pulse-ascent/pilot-volume.js
+          node --check --input-type=module < pulse-ascent/pilot-performance.js
           grep -q 'pilot-volume.js' pulse-ascent/index.html
-          grep -q 'pilot-volume.js' pulse-ascent/service-worker.js
-          grep -q 'pulse-ascent-v15' pulse-ascent/service-worker.js
+          grep -q 'pilot-performance.js' pulse-ascent/index.html
+          grep -q 'pilot-performance.js' pulse-ascent/service-worker.js
+          grep -q 'pulse-ascent-v16' pulse-ascent/service-worker.js
           grep -q '__pulsePilotVolume' pulse-ascent/pilot-volume.js
+          grep -q '__pulsePilotPerformance' pulse-ascent/pilot-performance.js
+          grep -q "'OVERDRIVE'" pulse-ascent/pilot-performance.js
+          grep -q "'FREE_VECTOR'" pulse-ascent/pilot-performance.js
           grep -q 'NormalBlending' pulse-ascent/pilot-volume.js
       - name: Install Playwright
         run: |
@@ -31,7 +36,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-pilot-server.log 2>&1 &
           sleep 2
-      - name: Exercise pilot evolution
+      - name: Exercise pilot evolution and combat poses
         run: |
           cat > /tmp/pilot-volume.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -43,9 +48,9 @@ jobs:
           const page=await browser.newPage({viewport:{width:1280,height:800}});
           const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.click('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulsePilotVolume&&window.__pilotTransformation,{timeout:15000});await page.waitForTimeout(800);
-          const initial=await page.evaluate(()=>window.__pulsePilotVolume.stats());
-          if(initial.solids<18||initial.plates<8||!initial.normalBlending)throw new Error(`pilot volume invalid ${JSON.stringify(initial)}`);
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulsePilotVolume&&window.__pulsePilotPerformance&&window.__pilotTransformation,{timeout:15000});await page.waitForTimeout(800);
+          const initial=await page.evaluate(()=>({volume:window.__pulsePilotVolume.stats(),pose:window.__pulsePilotPerformance.stats()}));
+          if(initial.volume.solids<18||initial.volume.plates<8||!initial.volume.normalBlending)throw new Error(`pilot volume invalid ${JSON.stringify(initial)}`);
           await page.screenshot({path:`${out}/01-pilot-volume.png`});
           await page.evaluate(()=>{const g=window.__pulseAscent;g.evolution=1;g.world.setEvolution(1);window.__pilotTransformation.trigger(1,false)});await page.waitForTimeout(450);
           const block=await page.evaluate(()=>window.__pulsePilotVolume.stats());
@@ -53,7 +58,19 @@ jobs:
           const ascend=await page.evaluate(()=>window.__pulsePilotVolume.stats());
           if(block.stage!=='BLOCK'||ascend.stage!=='ASCEND')throw new Error(`pilot evolution invalid ${JSON.stringify({block,ascend})}`);
           await page.screenshot({path:`${out}/02-pilot-ascend.png`});
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({initial,block,ascend,errors},null,2));
+          await page.evaluate(()=>window.__pulsePilotPerformance.trigger('fire',1.2));await page.waitForTimeout(35);
+          const fire=await page.evaluate(()=>window.__pulsePilotPerformance.stats());
+          if(fire.pose!=='FIRE')throw new Error(`fire pose missing ${JSON.stringify(fire)}`);
+          await page.screenshot({path:`${out}/03-pilot-fire.png`});
+          await page.evaluate(()=>window.__pulsePilotPerformance.trigger('hit',1.2));await page.waitForTimeout(35);
+          const hit=await page.evaluate(()=>window.__pulsePilotPerformance.stats());
+          if(hit.pose!=='HIT')throw new Error(`hit pose missing ${JSON.stringify(hit)}`);
+          await page.screenshot({path:`${out}/04-pilot-hit.png`});
+          await page.evaluate(()=>window.__pulsePilotPerformance.trigger('overdrive',1.2));await page.waitForTimeout(35);
+          const overdrive=await page.evaluate(()=>window.__pulsePilotPerformance.stats());
+          if(overdrive.pose!=='OVERDRIVE')throw new Error(`overdrive pose missing ${JSON.stringify(overdrive)}`);
+          await page.screenshot({path:`${out}/05-pilot-overdrive.png`});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({initial,block,ascend,fire,hit,overdrive,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));
           NODE
           node /tmp/pilot-volume.mjs
