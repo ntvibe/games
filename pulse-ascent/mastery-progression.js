@@ -28,22 +28,26 @@ function installStyle(){
 waitFor().then(game=>{
   if(game.__masteryProgressionInstalled)return;game.__masteryProgressionInstalled=true;installStyle();
   const campaign=window.__pulseCampaign,state=load();state.areas=state.areas||{};
-  let run=emptyRun(campaign.state.selected||1);
+  let run=emptyRun(campaign.state.selected||1),annotating=false;
 
   const areaData=id=>state.areas[id]||(state.areas[id]={clears:0,bestRoutes:0,bestHits:0,bestRiskHits:0,bestPerfectHits:0,bestScore:0});
   const persist=()=>save({areas:state.areas});
 
   function annotateLevelSelect(){
+    if(annotating)return;annotating=true;
     const buttons=[...document.querySelectorAll('#levelSelect button')];
     buttons.forEach((button,index)=>{
       const id=index+1,data=areaData(id),g=grade(data);let badge=button.querySelector('.mastery-medal');
       if(!badge){badge=document.createElement('span');badge.className='mastery-medal';button.appendChild(badge);}
       badge.dataset.grade=g.id;badge.textContent=data.clears?`${g.mark} ${g.label} · ${data.bestRoutes}/3 ROUTES`:'· NO CLEAR';
     });
+    annotating=false;
   }
 
   const baseRender=campaign.state.render;
   if(baseRender){campaign.state.render=()=>{baseRender();annotateLevelSelect();};campaign.state.render();}else annotateLevelSelect();
+  const levelSelect=document.querySelector('#levelSelect');
+  if(levelSelect)new MutationObserver(()=>queueMicrotask(annotateLevelSelect)).observe(levelSelect,{childList:true,subtree:false});
 
   function resetRun(){run=emptyRun(campaign.state.selected||1);run.scoreStart=game.score||0;}
   const baseStart=game.start.bind(game);game.start=async(...args)=>{resetRun();return baseStart(...args);};
