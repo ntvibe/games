@@ -1,0 +1,76 @@
+name: Pulse Ascent Area 01 opening check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/area1-opening-director.js'
+      - 'pulse-ascent/index.html'
+      - 'pulse-ascent/service-worker.js'
+      - '.github/workflows/pulse-ascent-opening-check.yml'
+  workflow_dispatch:
+jobs:
+  opening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check opening module syntax and integration
+        run: |
+          node --check --input-type=module < pulse-ascent/area1-opening-director.js
+          grep -q "__pulseArea1Opening" pulse-ascent/area1-opening-director.js
+          grep -q "EVOLUTION SEED" pulse-ascent/area1-opening-director.js
+          grep -q "SIGNAL ACCEPTED" pulse-ascent/area1-opening-director.js
+          grep -q "area1-opening-director.js" pulse-ascent/index.html
+          grep -q "area1-opening-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v27" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-opening-server.log 2>&1 &
+          sleep 2
+      - name: Exercise authored opening in WebGL
+        run: |
+          cat >/tmp/pulse-opening.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,step:4,dismissed:false})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.waitForFunction(()=>window.__pulseAscent&&window.__pulseArea1Opening&&window.__pulseOnboarding,{timeout:20000});
+          await page.locator('#startBtn').click();
+          await page.waitForFunction(()=>window.__pulseAscent.running,{timeout:10000});
+          await page.waitForTimeout(800);
+          const initial=await page.evaluate(()=>({enemies:window.__pulseAscent.enemies.filter(e=>!e.dead&&e.type!=='danger').length,stats:window.__pulseArea1Opening.stats()}));
+          if(initial.enemies<3||initial.enemies>5)throw new Error(`Expected restrained 3-target arrival, got ${initial.enemies}`);
+          await page.evaluate(()=>{const g=window.__pulseAscent;g.bar=4;g.spawnPattern(4);});
+          await page.waitForTimeout(250);
+          const staged=await page.evaluate(()=>({stats:window.__pulseArea1Opening.stats(),types:window.__pulseAscent.enemies.filter(e=>!e.dead).map(e=>e.type)}));
+          if(staged.stats.stage!=='EVOLUTION SEED'||!staged.types.includes('node'))throw new Error(`Opening staging failed: ${JSON.stringify(staged)}`);
+          await page.evaluate(()=>window.__pulseAscent.scoreTiming(.96,4));
+          const reactive=await page.evaluate(()=>window.__pulseArea1Opening.stats());
+          if(reactive.perfects<1)throw new Error('Perfect release did not feed opening director');
+          await page.evaluate(()=>window.__pulseAscent.onEnemyDestroyed({type:'node',score:0}));
+          const transformed=await page.evaluate(()=>window.__pulseArea1Opening.stats());
+          if(!transformed.firstNode)throw new Error('First node did not trigger form-shift beat');
+          fs.mkdirSync('pulse-ascent-opening',{recursive:true});
+          await page.screenshot({path:'pulse-ascent-opening/area01-opening-mobile.png',fullPage:true});
+          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
+          await browser.close();
+          NODE
+          node /tmp/pulse-opening.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pulse-ascent-area01-opening
+          path: pulse-ascent-opening
+          if-no-files-found: ignore
