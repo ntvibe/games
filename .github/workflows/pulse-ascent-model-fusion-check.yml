@@ -1,0 +1,44 @@
+name: Pulse Ascent model fusion check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-model-fusion-check.yml'
+  workflow_dispatch:
+jobs:
+  model-fusion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check model fusion
+        run: node --check --input-type=module < pulse-ascent/model-fusion.js
+      - name: Verify runtime integration
+        run: |
+          test -s pulse-ascent/model-fusion.js
+          grep -q 'GLTFLoader' pulse-ascent/model-fusion.js
+          grep -q 'fusion-enemy-model' pulse-ascent/model-fusion.js
+          grep -q 'fusion-boss-model' pulse-ascent/model-fusion.js
+          grep -q 'NormalBlending' pulse-ascent/model-fusion.js
+          grep -q '__pulseModelFusion' pulse-ascent/model-fusion.js
+          grep -q 'model-fusion.js' pulse-ascent/index.html
+      - name: Verify CC0 model payload
+        run: |
+          test -s pulse-ascent/assets/models/cc0/PROVENANCE.md
+          test -s pulse-ascent/assets/models/cc0/factory-machine.glb
+          test -s pulse-ascent/assets/models/cc0/factory-pipe.glb
+          test -s pulse-ascent/assets/models/cc0/factory-conveyor.glb
+          test -s pulse-ascent/assets/models/cc0/factory-tank.glb
+          test -s pulse-ascent/assets/models/cc0/blaster-rifle.glb
+          test -s pulse-ascent/assets/models/cc0/blaster-crate.glb
+          test -s pulse-ascent/assets/models/cc0/Textures/colormap.png
+          grep -q 'Kenney Factory Kit' pulse-ascent/assets/models/cc0/PROVENANCE.md
+          grep -q 'Kenney Blaster Kit' pulse-ascent/assets/models/cc0/PROVENANCE.md
+      - name: Verify offline package coverage
+        run: |
+          grep -q "pulse-ascent-v14" pulse-ascent/service-worker.js
+          grep -q "model-fusion.js" pulse-ascent/service-worker.js
+          grep -q "factory-machine.glb" pulse-ascent/service-worker.js
+          grep -q "blaster-rifle.glb" pulse-ascent/service-worker.js
