@@ -67,7 +67,13 @@ waitFor().then(game=>{
   }
 
   const baseSpawn=game.spawnEnemy.bind(game);
-  game.spawnEnemy=(type,pos,phase=0)=>attach(baseSpawn(type,pos,phase));
+  game.spawnEnemy=(type,pos,phase=0)=>{
+    const before=game.enemies.length;
+    const returned=baseSpawn(type,pos,phase);
+    const enemy=returned||game.enemies[game.enemies.length-1];
+    if(game.enemies.length>before)attach(enemy);
+    return enemy;
+  };
   for(const e of game.enemies)attach(e);
 
   const baseDestroyed=game.onEnemyDestroyed.bind(game);
