@@ -16,14 +16,18 @@ waitFor().then(game=>{
   const now=()=>performance.now()/1000;
   const chargeFromDuration=seconds=>smooth(clamp((seconds-.10)/.92,0,1));
 
+  const meter=document.createElement('div');meter.id='lanceCharge';meter.innerHTML='<span><i></i></span><b>LANCE CHARGE</b>';document.querySelector('#hud')?.appendChild(meter);
+  const style=document.createElement('style');style.textContent='#lanceCharge{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);width:126px;opacity:0;pointer-events:none;transition:opacity .12s;font:700 6px/1 system-ui;letter-spacing:.16em;text-align:center;color:#ff9be2}#lanceCharge.on{opacity:.9}#lanceCharge span{display:block;height:3px;border:1px solid #6d3157;background:#0b0710;margin-bottom:5px}#lanceCharge i{display:block;height:100%;width:0;background:#ff69d0}#lanceCharge.hot b{color:#fff}';document.head.appendChild(style);
+  const updateMeter=()=>{const lance=current().id==='lance';meter.classList.toggle('on',lance&&state.charging);meter.classList.toggle('hot',state.charge>.84);const fill=meter.querySelector('i');if(fill)fill.style.width=`${Math.round(state.charge*100)}%`;};
+
   const beginCharge=()=>{
     if(!game.running||current().id!=='lance')return;
-    state.pressedAt=now();state.charging=true;state.charge=0;
+    state.pressedAt=now();state.charging=true;state.charge=0;updateMeter();
   };
   const endCharge=()=>{
     if(!state.charging)return state.queuedCharge;
     const held=Math.max(0,now()-state.pressedAt),charge=chargeFromDuration(held);
-    state.charge=charge;state.queuedCharge=Math.max(.35,charge);state.charging=false;state.releases++;
+    state.charge=charge;state.queuedCharge=Math.max(.35,charge);state.charging=false;state.releases++;updateMeter();
     return state.queuedCharge;
   };
 
@@ -60,8 +64,8 @@ waitFor().then(game=>{
   const tick=()=>{
     if(state.charging)state.charge=chargeFromDuration(Math.max(0,now()-state.pressedAt));
     else if(current().id!=='lance')state.charge=0;
-    requestAnimationFrame(tick);
+    updateMeter();requestAnimationFrame(tick);
   };requestAnimationFrame(tick);
 
-  window.__pulseWeaponRhythmMastery={beginCharge,endCharge,stats:()=>({weapon:current().id,charging:state.charging,charge:state.charge,queuedCharge:state.queuedCharge,releases:state.releases,perfects:state.perfects})};
+  window.__pulseWeaponRhythmMastery={beginCharge,endCharge,stats:()=>({weapon:current().id,charging:state.charging,charge:state.charge,queuedCharge:state.queuedCharge,releases:state.releases,perfects:state.perfects,meterVisible:meter.classList.contains('on')})};
 });
