@@ -19,11 +19,14 @@ jobs:
           node --check --input-type=module < pulse-ascent/enemy-attack-anticipation.js
           grep -q "enemy-attack-anticipation.js" pulse-ascent/flow-combat-execution.js
           grep -q "enemy-attack-anticipation.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v52" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v53" pulse-ascent/service-worker.js
           grep -q "MIRROR OPEN" pulse-ascent/enemy-attack-anticipation.js
           grep -q "HELIX WIND" pulse-ascent/enemy-attack-anticipation.js
           grep -q "BRANCH RECOIL" pulse-ascent/enemy-attack-anticipation.js
           grep -q "CHOIR COUNT" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "RELEASE_GRID" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "scheduleCue" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "pulse:enemy-beat-launch" pulse-ascent/enemy-attack-anticipation.js
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -33,7 +36,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
           sleep 2
-      - name: Exercise pre-fire poses and delayed projectile launch
+      - name: Exercise beat-synced pre-fire poses and projectile launch
         run: |
           cat >/tmp/attack-anticipation.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -47,7 +50,8 @@ jobs:
           page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
           await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseEnemyMotionRigs&&window.__pulseAreaEnemyAttacks&&window.__pulseEnemyAttackAnticipation,{timeout:25000});
-          const started=await page.evaluate(async()=>{
+
+          const glass=await page.evaluate(async()=>{
             const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
             g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
             const left=g.spawnEnemy('sentinel',new THREE.Vector3(-3,.4,-21),0),right=g.spawnEnemy('sentinel',new THREE.Vector3(3,-.3,-22),.4);
@@ -58,21 +62,40 @@ jobs:
             const threats=g.enemies.filter(e=>e.type==='danger'&&e.__areaAttackSignature);
             const during=[left,right].map(e=>e.__fusionModel.children.filter(c=>c.name==='rez-volume-model').map(m=>[m.scale.x,m.scale.y,m.scale.z]));
             const changed=during.map((entry,i)=>entry.some((v,j)=>v.some((n,k)=>Math.abs(n-(before[i][j]?.[k]??n))>.001)));
-            return{triggered,threats:threats.length,hidden:threats.map(e=>e.group.visible===false),speed:threats.map(e=>e.speed),armed:threats.map(e=>!!e.__attackAnticipationArmed),changed,stats:window.__pulseEnemyAttackAnticipation.stats()};
+            return{triggered,threats:threats.length,hidden:threats.map(e=>e.group.visible===false),speed:threats.map(e=>e.speed),armed:threats.map(e=>!!e.__attackAnticipationArmed),gridSynced:threats.map(e=>!!e.__attackGridSynced),targetStep:threats.map(e=>e.__attackTargetStep),changed,stats:window.__pulseEnemyAttackAnticipation.stats()};
           });
-          if(!started.triggered||started.threats<2)throw new Error(`Area attack did not spawn paired threats: ${JSON.stringify(started)}`);
-          if(started.hidden.some(v=>!v)||started.speed.some(v=>v!==0)||started.armed.some(v=>!v))throw new Error(`Threat did not wait behind anticipation pose: ${JSON.stringify(started)}`);
-          if(started.changed.some(v=>!v))throw new Error(`Glass attack pose did not articulate source models: ${JSON.stringify(started)}`);
-          if(started.stats.lastName!=='MIRROR OPEN'||started.stats.active<1)throw new Error(`Anticipation diagnostics invalid: ${JSON.stringify(started)}`);
-          await page.screenshot({path:`${out}/mirror-open-windup-mobile.png`,fullPage:true});
-          await page.waitForTimeout(260);
-          const launched=await page.evaluate(()=>{const g=window.__pulseAscent,t=g.enemies.filter(e=>e.type==='danger'&&e.__areaAttackSignature);return{visible:t.map(e=>e.group.visible),speed:t.map(e=>e.speed),launched:t.map(e=>!!e.__attackLaunched),stats:window.__pulseEnemyAttackAnticipation.stats()};});
-          if(launched.visible.some(v=>!v)||launched.speed.some(v=>v<=0)||launched.launched.some(v=>!v))throw new Error(`Threats did not launch after windup: ${JSON.stringify(launched)}`);
-          if(launched.stats.launched<2||launched.stats.active!==0)throw new Error(`Launch cleanup invalid: ${JSON.stringify(launched)}`);
-          await page.screenshot({path:`${out}/mirror-crossfire-launched-mobile.png`,fullPage:true});
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({started,launched,errors},null,2));
+          if(!glass.triggered||glass.threats<2)throw new Error(`Glass attack did not spawn paired threats: ${JSON.stringify(glass)}`);
+          if(glass.hidden.some(v=>!v)||glass.speed.some(v=>v!==0)||glass.armed.some(v=>!v))throw new Error(`Threat did not wait behind anticipation pose: ${JSON.stringify(glass)}`);
+          if(glass.gridSynced.some(v=>!v)||glass.targetStep.some(v=>v<0||v%4!==0))throw new Error(`Glass threats were not quantized to a beat boundary: ${JSON.stringify(glass)}`);
+          if(glass.changed.some(v=>!v))throw new Error(`Glass attack pose did not articulate source models: ${JSON.stringify(glass)}`);
+          if(glass.stats.lastName!=='MIRROR OPEN'||glass.stats.active<1||glass.stats.states.some(s=>!s.gridSynced||s.targetStep%4!==0))throw new Error(`Anticipation diagnostics invalid: ${JSON.stringify(glass)}`);
+          await page.screenshot({path:`${out}/mirror-open-beat-windup-mobile.png`,fullPage:true});
+          await page.waitForFunction(()=>window.__pulseEnemyAttackAnticipation.stats().active===0&&window.__pulseEnemyAttackAnticipation.stats().launched>=2,{timeout:1800});
+          const glassLaunched=await page.evaluate(()=>{const g=window.__pulseAscent,t=g.enemies.filter(e=>e.type==='danger'&&e.__areaAttackSignature);return{visible:t.map(e=>e.group.visible),speed:t.map(e=>e.speed),launched:t.map(e=>!!e.__attackLaunched),error:t.map(e=>e.__attackLaunchErrorMs),stats:window.__pulseEnemyAttackAnticipation.stats()};});
+          if(glassLaunched.visible.some(v=>!v)||glassLaunched.speed.some(v=>v<=0)||glassLaunched.launched.some(v=>!v))throw new Error(`Glass threats did not launch on the beat: ${JSON.stringify(glassLaunched)}`);
+          if(glassLaunched.error.some(v=>!Number.isFinite(v)||Math.abs(v)>55)||Math.abs(glassLaunched.stats.lastLaunchErrorMs)>55)throw new Error(`Glass launch drift exceeded 55ms: ${JSON.stringify(glassLaunched)}`);
+          await page.screenshot({path:`${out}/mirror-crossfire-beat-launch-mobile.png`,fullPage:true});
+
+          const choir=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
+            g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=5;g.section=1;g.bar=20;g.boss=null;
+            g.spawnEnemy('sentinel',new THREE.Vector3(-2.6,.5,-21),0);g.spawnEnemy('sentinel',new THREE.Vector3(2.4,-.2,-22),.5);
+            await new Promise(r=>setTimeout(r,900));
+            const triggered=window.__pulseAreaEnemyAttacks.trigger(4);await new Promise(r=>setTimeout(r,90));
+            const threats=g.enemies.filter(e=>e.type==='danger'&&e.__areaAttackSignature),stats=window.__pulseEnemyAttackAnticipation.stats();
+            return{triggered,threats:threats.length,hidden:threats.map(e=>e.group.visible===false),targetStep:threats.map(e=>e.__attackTargetStep),stats};
+          });
+          if(!choir.triggered||choir.threats<1||choir.hidden.some(v=>!v))throw new Error(`Cathedral choir windup missing: ${JSON.stringify(choir)}`);
+          if(choir.targetStep.some(v=>v<0||v%4!==0)||choir.stats.lastName!=='CHOIR COUNT'||choir.stats.states.some(s=>!s.gridSynced))throw new Error(`Cathedral attack was not beat-quantized: ${JSON.stringify(choir)}`);
+          await page.screenshot({path:`${out}/choir-count-beat-windup-mobile.png`,fullPage:true});
+          await page.waitForFunction(()=>window.__pulseEnemyAttackAnticipation.stats().active===0,{timeout:2200});
+          const choirLaunched=await page.evaluate(()=>window.__pulseEnemyAttackAnticipation.stats());
+          if(choirLaunched.syncedLaunches<3||Math.abs(choirLaunched.lastLaunchErrorMs)>55)throw new Error(`Cathedral launch timing invalid: ${JSON.stringify(choirLaunched)}`);
+          await page.screenshot({path:`${out}/choir-count-beat-launch-mobile.png`,fullPage:true});
+
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({glass,glassLaunched,choir,choirLaunched,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));
-          console.log(JSON.stringify({started,launched},null,2));
+          console.log(JSON.stringify({glass,glassLaunched,choir,choirLaunched},null,2));
           NODE
           node /tmp/attack-anticipation.mjs
       - name: Upload evidence
