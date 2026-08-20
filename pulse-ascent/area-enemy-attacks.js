@@ -162,3 +162,5 @@ waitFor().then(game=>{
     stats:()=>({area:area()+1,phase:phase()+1,name:ATTACK_NAMES[area()]?.[phase()]||'',patterns:state.patterns,spawned:state.spawned,suppressedGeneric:state.suppressedGeneric,lastAttack:state.lastAttack,danger:dangerCount(),cap:maxDanger()})
   };
 });
+
+import('./threat-readability.js').catch(()=>{});
