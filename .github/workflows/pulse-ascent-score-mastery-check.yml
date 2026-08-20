@@ -17,9 +17,13 @@ jobs:
       - name: Check score mastery integration
         run: |
           node --check --input-type=module < pulse-ascent/score-mastery-feedback.js
+          node --check --input-type=module < pulse-ascent/flow-resonance.js
           node --check --input-type=module < pulse-ascent/formation-consequence-director.js
           node --check --input-type=module < pulse-ascent/weapon-rhythm-mastery.js
           grep -q "score-mastery-feedback.js" pulse-ascent/index.html
+          grep -q "flow-resonance.js" pulse-ascent/score-mastery-feedback.js
+          grep -q "THRESHOLDS=\[1,2,4,6\]" pulse-ascent/flow-resonance.js
+          grep -q "FLOW adds musical stems" pulse-ascent/flow-resonance.js
           grep -q "pulse:skill-reward" pulse-ascent/formation-consequence-director.js
           grep -q "LANCE RESONANCE" pulse-ascent/weapon-rhythm-mastery.js
           grep -q "score-mastery-feedback.js" pulse-ascent/service-worker.js
@@ -33,7 +37,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-score-mastery-server.log 2>&1 &
           sleep 2
-      - name: Exercise unified reward HUD
+      - name: Exercise unified reward HUD and FLOW tiers
         run: |
           cat > /tmp/score-mastery.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -48,24 +52,33 @@ jobs:
           await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
           await page.click('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseScoreMasteryFeedback,{timeout:15000});
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseScoreMasteryFeedback&&window.__pulseFlowResonance,{timeout:15000});
           await page.evaluate(()=>{const g=window.__pulseAscent;clearInterval(g.audio.timer);g.audio.timer=0;g.mult=3.42;g.scoreTiming(1,8);});
-          await page.waitForTimeout(120);
+          await page.waitForTimeout(160);
           let state=await page.evaluate(()=>({stats:window.__pulseScoreMasteryFeedback.stats(),flow:document.querySelector('#mfFlow')?.textContent,skill:document.querySelector('#mfSkill')?.textContent,rows:[...document.querySelectorAll('.mf-reward')].map(e=>e.textContent)}));
           if(state.stats.skillChain!==1||state.flow!=='x3.42'||state.skill!=='1'||!state.rows.some(x=>x.includes('PERFECT OCTAVE')))throw new Error(`Perfect feedback failed: ${JSON.stringify(state)}`);
           await page.screenshot({path:`${out}/01-perfect-flow-mobile.png`});
+
+          for(const [mult,tier,name] of [[2.1,1,'DRIVE'],[4.1,2,'RESONANCE'],[6.1,3,'ASCENT']]){
+            await page.evaluate(v=>window.__pulseAscent.mult=v,mult);await page.waitForTimeout(120);
+            const flowState=await page.evaluate(()=>({flow:window.__pulseFlowResonance.stats(),tier:document.querySelector('#masteryFeedback')?.dataset.flowTier,label:document.querySelector('.mf-flow-state')?.textContent}));
+            if(flowState.flow.tier!==tier||flowState.tier!==String(tier)||flowState.label!==name)throw new Error(`FLOW tier failed @${mult}: ${JSON.stringify(flowState)}`);
+          }
+          const topology=await page.evaluate(()=>{const a=(window.__pulseCampaign?.state?.selected||1)-1,w=window.__pulseTopologyWorlds?.worlds?.[a];return {tier:window.__pulseFlowResonance.stats().tier,resonance:window.__pulseFlowResonance.stats().resonance,packetOpacity:w?.packetMat?.opacity||0};});
+          if(topology.tier!==3||topology.resonance<=.2||topology.packetOpacity<=.2)throw new Error(`FLOW audiovisual response failed: ${JSON.stringify(topology)}`);
+          await page.screenshot({path:`${out}/02-flow-ascent-mobile.png`});
 
           await page.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:skill-reward',{detail:{label:'COMMAND BREAK',points:840,quality:.9,kind:'command'}})));
           await page.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:traversal-gate',{detail:{success:true,risk:true,award:1200,quality:.94}})));
           await page.waitForTimeout(100);
           state=await page.evaluate(()=>({stats:window.__pulseScoreMasteryFeedback.stats(),skill:document.querySelector('#mfSkill')?.textContent,rows:[...document.querySelectorAll('.mf-reward')].map(e=>e.textContent)}));
           if(state.stats.skillChain!==3||state.skill!=='3'||!state.rows.some(x=>x.includes('COMMAND BREAK'))||!state.rows.some(x=>x.includes('OVERDRIVE GATE')))throw new Error(`Skill chain failed: ${JSON.stringify(state)}`);
-          await page.screenshot({path:`${out}/02-skill-chain-mobile.png`});
+          await page.screenshot({path:`${out}/03-skill-chain-mobile.png`});
 
           await page.evaluate(()=>window.__pulseAscent.takeHit());
-          await page.waitForTimeout(80);
-          state=await page.evaluate(()=>window.__pulseScoreMasteryFeedback.stats());
-          if(state.skillChain!==0)throw new Error(`Skill reset failed: ${JSON.stringify(state)}`);
+          await page.waitForTimeout(100);
+          state=await page.evaluate(()=>({mastery:window.__pulseScoreMasteryFeedback.stats(),flow:window.__pulseFlowResonance.stats(),tier:document.querySelector('#masteryFeedback')?.dataset.flowTier}));
+          if(state.mastery.skillChain!==0||state.flow.tier!==0||state.tier!=='0')throw new Error(`Damage reset failed: ${JSON.stringify(state)}`);
           if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
           await browser.close();
           NODE
