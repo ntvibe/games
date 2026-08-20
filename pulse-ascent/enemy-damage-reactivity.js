@@ -28,7 +28,7 @@ function makeCracks(model,color){
 
 function releaseModel(game,enemy,state){
   const model=enemy.__fusionModel;if(!model||state.released)return;
-  state.released=true;enemy.group.updateMatrixWorld(true);game.scene.attach(model);model.updateMatrixWorld(true);
+  state.released=true;enemy.group.updateMatrixWorld(true);game.scene.attach(model);model.name='fusion-disassembly';model.updateMatrixWorld(true);
   const pieces=model.children.filter(c=>c!==state.cracks && c.name==='rez-volume-model');
   const born=performance.now(),duration=mobile()?520:700;
   const velocities=pieces.map((p,i)=>{
@@ -111,6 +111,6 @@ waitFor().then(game=>{
 
   window.__pulseEnemyDamageReactivity={
     style,
-    stats:()=>({tracked:tracked.size,hits,disassemblies,activeCracks:[...tracked].filter(e=>e.__damageReactiveState?.cracks?.material?.opacity>0.05).length})
+    stats:()=>({tracked:tracked.size,hits,disassemblies,activeCracks:[...tracked].filter(e=>e.__damageReactiveState?.cracks?.material?.opacity>0.05).length,activeDisassemblies:game.scene.children.filter(o=>o.name==='fusion-disassembly').length})
   };
 });
