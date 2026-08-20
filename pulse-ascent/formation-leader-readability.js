@@ -37,7 +37,7 @@ waitFor().then(game=>{
     if(!enemy||enemy.dead||!enemy.group||!enemy.__formationId||enemy.__formationVoice!==0)return null;
     let m=state.markers.get(enemy);if(m)return m;
     const sigil=makeSigil(AREA_COLORS[area()]||AREA_COLORS[0]);game.scene.add(sigil.line);
-    m={...sigil,locked:false,shown:false,phase:Math.random()*Math.PI*2};state.markers.set(enemy,m);enemy.__formationLeaderReadable=true;return m;
+    m={...sigil,locked:false,shown:false};state.markers.set(enemy,m);enemy.__formationLeaderReadable=true;return m;
   }
 
   function remove(enemy,m){
@@ -50,7 +50,9 @@ waitFor().then(game=>{
     for(const enemy of game.enemies||[]){
       if(enemy.dead||!enemy.__formationId||enemy.__formationVoice!==0||!enemy.group)continue;
       live.add(enemy);const m=ensure(enemy);if(!m)continue;
-      const p=enemy.group.getWorldPosition(new THREE.Vector3());p.y+=1.35+(enemy.type==='tank'||enemy.type==='sentinel'?.22:0);m.line.position.copy(p);m.line.quaternion.copy(game.camera.quaternion);
+      const p=enemy.group.getWorldPosition(new THREE.Vector3());
+      p.y+=1.35+((enemy.type==='tank'||enemy.type==='sentinel')?.22:0);
+      m.line.position.copy(p);m.line.quaternion.copy(game.camera.quaternion);
       const targetable=!enemy.__revealLocked,locked=!!enemy.locked,base=mobile()?.82:.92,comfortScale=comfort()?.92:1;
       m.line.scale.setScalar(base*comfortScale*(1+(locked?.12:.04)*pulse));
       m.mat.opacity=targetable?(locked?.82:.5+pulse*.08):.25;
