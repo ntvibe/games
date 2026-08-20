@@ -1,0 +1,105 @@
+name: Pulse Ascent formation leader check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-formation-leader-check.yml'
+  workflow_dispatch:
+jobs:
+  leader-readability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check tactical leader integration
+        run: |
+          node --check --input-type=module < pulse-ascent/formation-leader-readability.js
+          node --check --input-type=module < pulse-ascent/formation-reveal-director.js
+          node --check --input-type=module < pulse-ascent/formation-consequence-director.js
+          grep -q "formation-leader-readability.js" pulse-ascent/formation-reveal-director.js
+          grep -q "formation-command-sigil" pulse-ascent/formation-leader-readability.js
+          grep -q "NormalBlending" pulse-ascent/formation-leader-readability.js
+          grep -q "COMMAND TARGET // BREAK FIRST" pulse-ascent/formation-leader-readability.js
+          grep -q "COMMAND BREAK x1.25" pulse-ascent/formation-consequence-director.js
+          grep -q "commandBonus" pulse-ascent/formation-consequence-director.js
+          grep -q "formation-leader-readability.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v44" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-formation-leader-server.log 2>&1 &
+          sleep 2
+      - name: Exercise leader readability and command reward
+        run: |
+          cat > /tmp/formation-leader.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-formation-leader';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844}});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseFormationReveal&&window.__pulseFormationConsequence&&window.__pulseFormationLeaderReadability,{timeout:15000});
+          await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent;
+            clearInterval(g.audio.timer);g.audio.timer=0;
+            for(const e of [...g.enemies])e.dispose?.();g.enemies=[];
+            const specs=[['sentinel',0,0],['drone',-2.3,.9],['drone',2.3,-.9],['prism',-4,-.4],['drone',4,.5],['drone',0,1.8]];
+            for(const [type,x,y] of specs)g.spawnEnemy(type,new THREE.Vector3(x,y,-30),1);
+            window.__pulseFormationReveal.finalize();
+            for(const e of g.enemies)if(e.__revealState)e.__revealState.age=1;
+            window.__pulseFormationReveal.processStep(100);
+          });
+          await page.waitForTimeout(120);
+          const leaderState=await page.evaluate(()=>{
+            const g=window.__pulseAscent,leader=g.enemies.find(e=>!e.dead&&e.__formationVoice===0),s=window.__pulseFormationLeaderReadability.stats();
+            return{leaderType:leader?.type,readable:!!leader?.__formationLeaderReadable,targetable:leader?!leader.__revealLocked:false,stats:s,sigils:g.scene.children.filter(o=>o.name==='formation-command-sigil').length};
+          });
+          if(leaderState.leaderType!=='sentinel'||!leaderState.readable||!leaderState.targetable||leaderState.stats.leaders!==1||leaderState.sigils!==1||!leaderState.stats.normalBlending)throw new Error(`Leader marker failed: ${JSON.stringify(leaderState)}`);
+          await page.screenshot({path:`${out}/01-command-leader-mobile.png`});
+
+          await page.evaluate(()=>{const leader=window.__pulseAscent.enemies.find(e=>!e.dead&&e.__formationVoice===0);leader.locked=true;});
+          await page.waitForTimeout(100);
+          const locked=await page.evaluate(()=>window.__pulseFormationLeaderReadability.stats());
+          if(locked.lockCues<1)throw new Error(`Leader lock cue failed: ${JSON.stringify(locked)}`);
+          await page.screenshot({path:`${out}/02-command-lock-mobile.png`});
+
+          await page.evaluate(()=>{window.__pulseFormationReveal.processStep(101);window.__pulseFormationReveal.processStep(102);window.__pulseFormationReveal.processStep(103);});
+          await page.waitForTimeout(80);
+          const before=await page.evaluate(()=>window.__pulseAscent.score);
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent,leader=g.enemies.find(e=>!e.dead&&e.__formationVoice===0);
+            if(!leader)throw new Error('Missing command leader');
+            leader.__hitFeedbackCtx={q:.72,weapon:'lock',at:performance.now()};leader.hit(99);
+            window.__pulseFormationConsequence.processStep(104);
+          });
+          await page.waitForTimeout(150);
+          const broken=await page.evaluate(()=>{
+            const g=window.__pulseAscent,s=window.__pulseFormationConsequence.stats(),r=window.__pulseFormationLeaderReadability.stats(),leader=g.enemies.find(e=>!e.dead&&e.__formationVoice===0);
+            return{score:g.score,stats:s,readability:r,successor:!!leader?.__formationSuccessor,leaderReadable:!!leader?.__formationLeaderReadable};
+          });
+          if(broken.stats.commandBreaks<1||broken.stats.commandBonus<=0||broken.score<=before||!broken.successor||!broken.leaderReadable||broken.readability.leaders!==1)throw new Error(`Command break reward failed: ${JSON.stringify(broken)}`);
+          await page.screenshot({path:`${out}/03-command-successor-mobile.png`});
+          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
+          await browser.close();
+          NODE
+          node /tmp/formation-leader.mjs
+      - name: Upload leader evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-formation-leader
+          path: pulse-ascent-formation-leader
+          if-no-files-found: warn
