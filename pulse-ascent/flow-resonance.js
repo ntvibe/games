@@ -47,7 +47,7 @@ waitFor().then(game=>{
     // FLOW adds musical stems rather than simply making the master bus louder.
     if(tier>=1&&(s===0||s===8))audio.osc('sine',audio.midi(root+12),t,.12,.009+e*.004,audio.music,0,s===0?-.18:.18);
     if(tier>=2&&[2,6,10,14].includes(s)){
-      const scale=audio.scale||[0,2,3,7,9,12],note=scale[(Math.floor(step/4)+s/2)%scale.length|0]||0;
+      const scale=audio.scale||[0,2,3,7,9,12],note=scale[((Math.floor(step/4)+s/2)%scale.length)|0]||0;
       audio.pluck(t,root+24+note,.012+e*.006,.08,(s-8)/10);
     }
     if(tier>=3&&s===0){
@@ -67,7 +67,7 @@ waitFor().then(game=>{
       w.mat.opacity=clamp(w.mat.opacity*(1+state.resonance*.12),.035,.2);
       w.packetMat.opacity=clamp(w.packetMat.opacity*(1+state.resonance*.18),.2,.88);
       w.packetMat.size*=1+state.resonance*.07;
-      const accent=topology.profiles?.[area]?.colors?.[1];if(accent!==undefined)w.mat.color.lerp(new w.mat.color.constructor(accent),state.resonance*.055);
+      const accent=topology.profiles?.[area]?.colors?.[1];if(accent!==undefined)w.mat.color.lerp(w.mat.color.clone().set(accent),state.resonance*.055);
     }
   };
 
