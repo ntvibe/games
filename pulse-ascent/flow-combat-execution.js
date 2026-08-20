@@ -70,3 +70,5 @@ waitFor().then(game=>{
     stats:()=>({tier:state.tier,lockVisualGain:Number(state.lockVisualGain.toFixed(2)),fireSyncGain:Number(state.fireSyncGain.toFixed(2)),pulse:Number(state.pulse.toFixed(3)),locksStyled:state.locksStyled,releases:state.releases,lastQuality:Number(state.lastQuality.toFixed(3)),lastCount:state.lastCount,mechanicalAdvantage:false})
   };
 });
+
+import('./enemy-attack-anticipation.js').catch(()=>{});
