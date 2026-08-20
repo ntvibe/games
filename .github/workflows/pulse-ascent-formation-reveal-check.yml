@@ -18,17 +18,24 @@ jobs:
         run: |
           node --check --input-type=module < pulse-ascent/formation-reveal-director.js
           node --check --input-type=module < pulse-ascent/formation-consequence-director.js
+          node --check --input-type=module < pulse-ascent/formation-combat-state.js
           grep -q "formation-reveal-director.js" pulse-ascent/enemy-reveal-director.js
           grep -q "formation-consequence-director.js" pulse-ascent/formation-reveal-director.js
+          grep -q "formation-combat-state.js" pulse-ascent/formation-consequence-director.js
           grep -q "__pulseFormationReveal" pulse-ascent/formation-reveal-director.js
           grep -q "__pulseFormationConsequence" pulse-ascent/formation-consequence-director.js
+          grep -q "__pulseFormationCombatState" pulse-ascent/formation-combat-state.js
           grep -q "BUS REROUTE" pulse-ascent/formation-consequence-director.js
           grep -q "CHORD REVOICE" pulse-ascent/formation-consequence-director.js
+          grep -q "MIRROR DESYNC" pulse-ascent/formation-combat-state.js
+          grep -q "BRANCH PANIC" pulse-ascent/formation-combat-state.js
+          grep -q "adjustThreat" pulse-ascent/area-enemy-attacks.js
           grep -q "PERFECT BREAK" pulse-ascent/formation-consequence-director.js
           grep -q "processStep" pulse-ascent/formation-reveal-director.js
           grep -q "formation-reveal-director.js" pulse-ascent/service-worker.js
           grep -q "formation-consequence-director.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v42" pulse-ascent/service-worker.js
+          grep -q "formation-combat-state.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v43" pulse-ascent/service-worker.js
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -53,7 +60,7 @@ jobs:
           await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
           await page.click('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseEnemyReveal&&window.__pulseFormationReveal&&window.__pulseFormationConsequence&&window.__pulseRailCamera,{timeout:15000});
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseEnemyReveal&&window.__pulseFormationReveal&&window.__pulseFormationConsequence&&window.__pulseFormationCombatState&&window.__pulseAreaEnemyAttacks&&window.__pulseRailCamera,{timeout:15000});
           await page.evaluate(async()=>{
             const THREE=await import('three'),g=window.__pulseAscent;
             clearInterval(g.audio.timer);g.audio.timer=0;
@@ -83,8 +90,24 @@ jobs:
             window.__pulseFormationConsequence.processStep(104);
           });
           await page.waitForTimeout(120);
-          const regrouped=await page.evaluate(()=>{const g=window.__pulseAscent,s=window.__pulseFormationConsequence.stats(),leaders=g.enemies.filter(e=>!e.dead&&e.__formationVoice===0);return{stats:s,leaders:leaders.length,successors:leaders.filter(e=>e.__formationSuccessor).length,score:g.score,sync:g.sync};});
+          const regrouped=await page.evaluate(()=>{
+            const g=window.__pulseAscent,s=window.__pulseFormationConsequence.stats(),combat=window.__pulseFormationCombatState.stats(),leaders=g.enemies.filter(e=>!e.dead&&e.__formationVoice===0),successor=leaders[0];
+            const tuned=window.__pulseFormationCombatState.adjustThreat(successor,{targetX:g.world.avatar.position.x+1,targetY:g.world.avatar.position.y,speed:24,delay:0});
+            return{stats:s,combat,leaders:leaders.length,successors:leaders.filter(e=>e.__formationSuccessor).length,score:g.score,sync:g.sync,tuned};
+          });
           if(regrouped.stats.regroups<1||regrouped.stats.perfectBreaks<1||regrouped.stats.lastReaction!=='BUS REROUTE'||regrouped.leaders!==1||regrouped.successors!==1||regrouped.stats.reacting<2)throw new Error(`Formation regroup failed: ${JSON.stringify(regrouped)}`);
+          if(regrouped.combat.active<1||regrouped.combat.lastState!=='BUS REROUTE'||regrouped.tuned.formationState!=='BUS REROUTE'||!(regrouped.tuned.speed<24))throw new Error(`Formation combat state failed: ${JSON.stringify(regrouped)}`);
+
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent;g.bar=20;g.section=1;g.running=true;
+            for(const e of [...g.enemies])if(e.type==='danger'){e.dispose?.();e.dead=true;}
+            g.enemies=g.enemies.filter(e=>!e.dead);
+            window.__pulseAreaEnemyAttacks.trigger(6);
+          });
+          await page.waitForTimeout(100);
+          const attackState=await page.evaluate(()=>({combat:window.__pulseFormationCombatState.stats(),attacks:window.__pulseAreaEnemyAttacks.stats(),tagged:window.__pulseAscent.enemies.filter(e=>e.type==='danger'&&e.__formationAttackState).map(e=>e.__formationAttackState)}));
+          if(attackState.combat.adjusted<1&&attackState.combat.suppressed<1)throw new Error(`Formation attack grammar was not applied: ${JSON.stringify(attackState)}`);
+          if(attackState.tagged.length&&attackState.tagged.some(x=>x!=='BUS REROUTE'))throw new Error(`Unexpected formation threat state: ${JSON.stringify(attackState)}`);
           await page.screenshot({path:`${out}/03-leader-break-regroup-mobile.png`});
           if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
           await browser.close();
