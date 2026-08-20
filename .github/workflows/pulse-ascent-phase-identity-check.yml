@@ -4,6 +4,7 @@ on:
     paths:
       - 'pulse-ascent/level-campaign.js'
       - 'pulse-ascent/area-phase-transitions.js'
+      - 'pulse-ascent/area-combat-grammar.js'
       - 'pulse-ascent/index.html'
       - 'pulse-ascent/service-worker.js'
       - '.github/workflows/pulse-ascent-phase-identity-check.yml'
@@ -20,7 +21,8 @@ jobs:
         run: |
           node --check --input-type=module < pulse-ascent/level-campaign.js
           node --check --input-type=module < pulse-ascent/area-phase-transitions.js
-      - name: Verify distinct campaign phase identities
+          node --check --input-type=module < pulse-ascent/area-combat-grammar.js
+      - name: Verify distinct campaign phase identities and combat grammar
         run: |
           grep -q "REFRACTION CLOISTER" pulse-ascent/level-campaign.js
           grep -q "MIRROR SANCTUM" pulse-ascent/level-campaign.js
@@ -32,6 +34,14 @@ jobs:
           grep -q "SERAPH NAVE" pulse-ascent/level-campaign.js
           grep -q "PHASE_ACCENTS" pulse-ascent/area-phase-transitions.js
           grep -q "__pulseAreaPhaseTransitions" pulse-ascent/area-phase-transitions.js
+          grep -q "STEP LANES" pulse-ascent/area-combat-grammar.js
+          grep -q "MIRROR PAIRS" pulse-ascent/area-combat-grammar.js
+          grep -q "ABYSS ORBITS" pulse-ascent/area-combat-grammar.js
+          grep -q "BRANCH MAZE" pulse-ascent/area-combat-grammar.js
+          grep -q "SERAPH CHORDS" pulse-ascent/area-combat-grammar.js
+          grep -q "__pulseAreaCombatGrammar" pulse-ascent/area-combat-grammar.js
+          grep -q "game.bar||0)<16" pulse-ascent/area-combat-grammar.js
           grep -q "area-phase-transitions.js" pulse-ascent/index.html
-          grep -q "area-phase-transitions.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v29" pulse-ascent/service-worker.js
+          grep -q "area-combat-grammar.js" pulse-ascent/index.html
+          grep -q "area-combat-grammar.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v30" pulse-ascent/service-worker.js
