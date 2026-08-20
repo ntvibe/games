@@ -43,8 +43,8 @@ function detachDeathStage(game,stage){
   const ribBases=stage.ribs.map(r=>r.position.clone());
   const tick=now=>{
     const q=clamp((now-start)/duration,0,1),e=1-Math.pow(1-q,3);
-    stage.plates.forEach((p,i)=>{const a=p.userData.a,base=bases[i];p.position.copy(base.p).add(new THREE.Vector3(Math.cos(a)*e*(2.8+(i%3)*.5),Math.sin(a)*e*(2.1+(i%2)*.35),((i%3)-1)*e*1.2));p.rotation.x=base.r.x+e*(.7+i*.07);p.rotation.y=base.r.y+e*(i%2?1.1:-1.1);p.rotation.z=base.r.z+e*(i%2?.8:-.8);p.material.opacity=.72*(1-q);p.traverse(o=>{if(o.isLineSegments)o.material.opacity=.22*(1-q)});});
-    stage.ribs.forEach((r,i)=>{const a=r.userData.a;r.position.copy(ribBases[i]).add(new THREE.Vector3(Math.cos(a)*e*1.5,Math.sin(a)*e*1.2,e*(i%2?.8:-.8)));r.rotation.y+=.02;r.material.opacity=.55*(1-q);});
+    stage.plates.forEach((p,i)=>{const a=p.userData.a,base=bases[i];p.position.copy(base.p).add(new THREE.Vector3(Math.cos(a)*e*(2.8+(i%3)*.5),Math.sin(a)*e*(2.1+(i%2)*.35),((i%3)-1)*e*1.2));p.rotation.x=base.r.x+e*(.7+i*.07);p.rotation.y=base.r.y+e*(i%2?1.1:-1.1);p.rotation.z=base.r.z+e*(i%2 ? .8 : -.8);p.material.opacity=.72*(1-q);p.traverse(o=>{if(o.isLineSegments)o.material.opacity=.22*(1-q)});});
+    stage.ribs.forEach((r,i)=>{const a=r.userData.a;r.position.copy(ribBases[i]).add(new THREE.Vector3(Math.cos(a)*e*1.5,Math.sin(a)*e*1.2,e*(i%2 ? .8 : -.8)));r.rotation.y+=.02;r.material.opacity=.55*(1-q);});
     stage.crackMat.opacity=.45*(1-q);stage.cage.material.opacity=.18*(1-q);stage.core.material.opacity=.42*(1-q);stage.root.scale.setScalar(1+e*.18);
     if(q<1){requestAnimationFrame(tick);return;}stage.root.parent?.remove(stage.root);stage.root.traverse(o=>{o.geometry?.dispose?.();o.material?.dispose?.();});
   };requestAnimationFrame(tick);
