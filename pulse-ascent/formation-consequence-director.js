@@ -53,14 +53,15 @@ waitFor().then(game=>{
     window.__pulseFormationCombatState?.markRegroup?.(event.id,event.area);
     window.__pulseFormationLeaderReadability?.refresh?.();
     const perfect=event.q>.88,reaction=REACTIONS[event.area];
-    let commandBonus=0;
+    let commandBonus=0,perfectBonus=0;
     if(event.early){
       commandBonus=Math.floor(event.enemyScore*.25+ordered.length*30);game.score+=commandBonus;state.commandBreaks++;state.commandBonus+=commandBonus;
     }
-    if(perfect){state.perfectBreaks++;game.score+=420+ordered.length*85;game.sync=clamp(game.sync+3,0,100);game.overdrive=clamp(game.overdrive+5,0,100);}
+    if(perfect){perfectBonus=420+ordered.length*85;state.perfectBreaks++;game.score+=perfectBonus;game.sync=clamp(game.sync+3,0,100);game.overdrive=clamp(game.overdrive+5,0,100);}
     game.updateHud?.();musicalResponse(event.area,perfect);window.__pulseRailCamera?.frameEncounter?.(ordered.slice(0,mobile()?3:5));
     const prefix=perfect?'PERFECT BREAK':event.early?'COMMAND BREAK x1.25':'FORMATION BREAK',weight=perfect ? 1 : (event.early ? .9 : .82);
     game.showCallout?.(`${prefix} // ${reaction}`,weight);game.haptic?.(perfect?[8,10,14]:(mobile()?5:7));
+    if(event.early||perfect)window.dispatchEvent(new CustomEvent('pulse:skill-reward',{detail:{label:perfect?'PERFECT COMMAND BREAK':'COMMAND BREAK',points:commandBonus+perfectBonus,quality:event.q,kind:perfect?'perfect':'command'}}));
     state.lastReaction=reaction;state.regroups++;
   }
 
