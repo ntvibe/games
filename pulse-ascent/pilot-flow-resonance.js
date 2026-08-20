@@ -84,5 +84,4 @@ waitFor().then(game=>{
     root,trace,points,
     stats:()=>({tier:state.tier,intensity:Number(state.intensity.toFixed(3)),traceOpacity:Number(traceMat.opacity.toFixed(3)),pointOpacity:Number(pointMat.opacity.toFixed(3)),dematerialization:Number(state.dematerialization.toFixed(3)),plates:volume.plates?.length||0,normalBlending:traceMat.blending===THREE.NormalBlending&&pointMat.blending===THREE.NormalBlending})
   };
-  import('./flow-execution.js').catch(()=>{});
 });
