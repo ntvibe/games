@@ -1,0 +1,86 @@
+name: Pulse Ascent rail camera check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-rail-camera-check.yml'
+  workflow_dispatch:
+jobs:
+  rail-camera:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check rail camera integration
+        run: |
+          node --check --input-type=module < pulse-ascent/rail-camera-director.js
+          node --check --input-type=module < pulse-ascent/spatial-depth-director.js
+          grep -q "rail-camera-director.js" pulse-ascent/index.html
+          grep -q "__pulseRailCamera" pulse-ascent/rail-camera-director.js
+          grep -q "prefers-reduced-motion" pulse-ascent/rail-camera-director.js
+          grep -q "railDrive" pulse-ascent/spatial-depth-director.js
+          grep -q "rail-camera-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v39" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-rail-server.log 2>&1 &
+          sleep 2
+      - name: Exercise authored rail camera
+        run: |
+          cat > /tmp/rail-camera.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-rail-camera';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844}});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseRailCamera&&window.__pulseSpatialDepth,{timeout:15000});
+          await page.waitForTimeout(700);
+          const before=await page.evaluate(()=>window.__pulseRailCamera.stats());
+          const reveal=await page.evaluate(()=>{const g=window.__pulseAscent,r=window.__pulseRailCamera;const n=r.stats().encounters;g.spawnPattern(27);return{before:n,after:r.stats().encounters,enemies:g.enemies.length};});
+          if(reveal.after<=reveal.before||reveal.enemies<1)throw new Error(`Encounter framing hook failed: ${JSON.stringify(reveal)}`);
+          await page.waitForTimeout(220);
+          const framed=await page.evaluate(()=>({camera:window.__pulseRailCamera.stats(),depth:window.__pulseSpatialDepth.stats()}));
+          if(!framed.camera.active||framed.camera.reveal<=0||Math.abs(framed.camera.offset.x)+Math.abs(framed.camera.offset.roll)<.001)throw new Error(`Rail framing inactive: ${JSON.stringify(framed)}`);
+          if(framed.camera.drive<.84||framed.camera.drive>1.16||framed.depth.speed<=0)throw new Error(`Rail speed coupling invalid: ${JSON.stringify(framed)}`);
+          await page.screenshot({path:`${out}/01-encounter-framing-mobile.png`});
+
+          await page.evaluate(()=>window.__pulseRailCamera.pulseImpact(1));await page.waitForTimeout(80);
+          const impact=await page.evaluate(()=>window.__pulseRailCamera.stats());
+          if(impact.impact<.15||impact.drive>=1.08)throw new Error(`Impact punctuation failed: ${JSON.stringify(impact)}`);
+          await page.screenshot({path:`${out}/02-impact-punctuation-mobile.png`});
+
+          await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>window.__pulseRailCamera.pulseImpact(1));await page.waitForTimeout(120);
+          const reduced=await page.evaluate(()=>window.__pulseRailCamera.stats());
+          if(!reduced.reducedMotion||!reduced.comfort)throw new Error(`Reduced motion not honored: ${JSON.stringify(reduced)}`);
+          const magnitude=Math.abs(reduced.offset.x)+Math.abs(reduced.offset.y)+Math.abs(reduced.offset.roll);
+          if(magnitude>.22)throw new Error(`Reduced-motion camera still too strong: ${JSON.stringify(reduced)}`);
+          await page.screenshot({path:`${out}/03-reduced-motion-mobile.png`});
+
+          await page.evaluate(()=>{window.__pulseAscent.world.lines.visible=false;});await page.waitForTimeout(250);
+          const suppressed=await page.evaluate(()=>window.__pulseRailCamera.stats());
+          if(suppressed.active)throw new Error(`Rail director did not yield to non-rail mode: ${JSON.stringify(suppressed)}`);
+          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
+          await browser.close();
+          NODE
+          node /tmp/rail-camera.mjs
+      - name: Upload rail camera evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-rail-camera
+          path: pulse-ascent-rail-camera
+          if-no-files-found: warn
