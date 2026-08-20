@@ -53,4 +53,5 @@ waitFor().then(game=>{
   };requestAnimationFrame(tick);
 
   window.__pulseScoreMasteryFeedback={reward,reset,stats:()=>({skillChain:state.skillChain,bestSkillChain:state.bestSkillChain,totalRewards:state.totalRewards,totalRewardPoints:state.totalRewardPoints,lastLabel:state.lastLabel,feed:state.feed.map(x=>({label:x.label,points:x.points,kind:x.kind})),flow:Math.max(1,game.mult||1)})};
+  import('./flow-resonance.js').catch(()=>{});
 });
