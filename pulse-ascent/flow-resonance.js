@@ -80,4 +80,5 @@ waitFor().then(game=>{
     setTier,
     stats:()=>({tier:state.tier,name:NAMES[state.tier],peakTier:state.peakTier,resonance:state.resonance,mult:state.lastMult,thresholds:[...THRESHOLDS]})
   };
+  import('./pilot-flow-resonance.js').catch(()=>{});
 });
