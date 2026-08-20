@@ -1,0 +1,91 @@
+name: Pulse Ascent enemy damage reactivity
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-enemy-damage-check.yml'
+  workflow_dispatch:
+jobs:
+  enemy-damage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/enemy-damage-reactivity.js
+          grep -q "enemy-damage-reactivity.js" pulse-ascent/index.html
+          grep -q "enemy-damage-reactivity.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v34" pulse-ascent/service-worker.js
+          grep -q "fusion-damage-cracks" pulse-ascent/enemy-damage-reactivity.js
+          grep -q "fusion-disassembly" pulse-ascent/enemy-damage-reactivity.js
+          grep -q "NormalBlending" pulse-ascent/enemy-damage-reactivity.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise physical damage reactions
+        run: |
+          cat >/tmp/enemy-damage.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='enemy-damage-evidence';fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.addInitScript(()=>{
+            localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({complete:true,step:5}));
+          });
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
+          await page.waitForFunction(()=>window.__pulseModelFusion?.ready&&window.__pulseHitFeedback&&window.__pulseEnemyDamageReactivity,{timeout:18000});
+          const partial=await page.evaluate(async()=>{
+            const g=window.__pulseAscent;
+            for(const e of [...g.enemies])e.dispose?.();g.enemies=[];
+            const T=await import('three');
+            const e=g.spawnEnemy('tank',new T.Vector3(0,0,-15),2);
+            window.__pulseModelFusion.styleEnemy(e);window.__pulseHitFeedback.styleEnemy(e);window.__pulseEnemyDamageReactivity.style(e);
+            await new Promise(r=>setTimeout(r,120));
+            const st=e.__damageReactiveState,before=st.modules.map((m,i)=>m.position.distanceTo(st.base[i].p));
+            e.hit(1);await new Promise(r=>setTimeout(r,90));
+            const after=st.modules.map((m,i)=>m.position.distanceTo(st.base[i].p));
+            return {hp:e.hp,crack:st.cracks.material.opacity,maxBefore:Math.max(...before),maxAfter:Math.max(...after),normal:st.cracks.material.blending===T.NormalBlending,stats:window.__pulseEnemyDamageReactivity.stats()};
+          });
+          if(partial.hp!==3||partial.crack<.15||partial.maxAfter<=partial.maxBefore+.01||!partial.normal)throw new Error(`Partial damage reaction invalid: ${JSON.stringify(partial)}`);
+          await page.screenshot({path:`${out}/01-damaged-tank-mobile.png`});
+          const lethal=await page.evaluate(async()=>{
+            const g=window.__pulseAscent,e=g.enemies.find(x=>x.type==='tank'&&!x.dead);e.hit(99);await new Promise(r=>setTimeout(r,120));
+            return {...window.__pulseEnemyDamageReactivity.stats(),enemyDead:e.dead};
+          });
+          if(!lethal.enemyDead||lethal.disassemblies<1||lethal.activeDisassemblies<1)throw new Error(`Death disassembly invalid: ${JSON.stringify(lethal)}`);
+          await page.screenshot({path:`${out}/02-disassembly-mobile.png`});
+          await page.waitForTimeout(800);
+          const cleaned=await page.evaluate(()=>window.__pulseEnemyDamageReactivity.stats());
+          if(cleaned.activeDisassemblies!==0)throw new Error(`Disassembly did not clean up: ${JSON.stringify(cleaned)}`);
+          if(errors.length)throw new Error(errors.join('\n'));
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({partial,lethal,cleaned,errors},null,2));
+          await browser.close();
+          NODE
+          node /tmp/enemy-damage.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-enemy-damage
+          path: enemy-damage-evidence/
+          if-no-files-found: warn
+          retention-days: 7
