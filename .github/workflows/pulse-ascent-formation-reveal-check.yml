@@ -17,13 +17,18 @@ jobs:
       - name: Check formation reveal integration
         run: |
           node --check --input-type=module < pulse-ascent/formation-reveal-director.js
+          node --check --input-type=module < pulse-ascent/formation-consequence-director.js
           grep -q "formation-reveal-director.js" pulse-ascent/enemy-reveal-director.js
+          grep -q "formation-consequence-director.js" pulse-ascent/formation-reveal-director.js
           grep -q "__pulseFormationReveal" pulse-ascent/formation-reveal-director.js
-          grep -q "MIRROR PHRASE" pulse-ascent/formation-reveal-director.js
-          grep -q "CHORD ENTRY" pulse-ascent/formation-reveal-director.js
+          grep -q "__pulseFormationConsequence" pulse-ascent/formation-consequence-director.js
+          grep -q "BUS REROUTE" pulse-ascent/formation-consequence-director.js
+          grep -q "CHORD REVOICE" pulse-ascent/formation-consequence-director.js
+          grep -q "PERFECT BREAK" pulse-ascent/formation-consequence-director.js
           grep -q "processStep" pulse-ascent/formation-reveal-director.js
           grep -q "formation-reveal-director.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v41" pulse-ascent/service-worker.js
+          grep -q "formation-consequence-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v42" pulse-ascent/service-worker.js
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -48,7 +53,7 @@ jobs:
           await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
           await page.click('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseEnemyReveal&&window.__pulseFormationReveal&&window.__pulseRailCamera,{timeout:15000});
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseEnemyReveal&&window.__pulseFormationReveal&&window.__pulseFormationConsequence&&window.__pulseRailCamera,{timeout:15000});
           await page.evaluate(async()=>{
             const THREE=await import('three'),g=window.__pulseAscent;
             clearInterval(g.audio.timer);g.audio.timer=0;
@@ -70,6 +75,17 @@ jobs:
           const unfolded=await page.evaluate(()=>{const g=window.__pulseAscent;return{active:g.enemies.filter(e=>!e.__revealLocked).length,locked:g.enemies.filter(e=>e.__revealLocked).length,stats:window.__pulseFormationReveal.stats()};});
           if(unfolded.active!==6||unfolded.locked!==0||unfolded.stats.completed<1)throw new Error(`Formation unfold failed: ${JSON.stringify(unfolded)}`);
           await page.screenshot({path:`${out}/02-formation-unfolded-mobile.png`});
+
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent,leader=g.enemies.find(e=>!e.dead&&e.__formationVoice===0);
+            if(!leader)throw new Error('Missing formation leader');
+            leader.__hitFeedbackCtx={q:.96,weapon:'lock',at:performance.now()};leader.hit(99);
+            window.__pulseFormationConsequence.processStep(104);
+          });
+          await page.waitForTimeout(120);
+          const regrouped=await page.evaluate(()=>{const g=window.__pulseAscent,s=window.__pulseFormationConsequence.stats(),leaders=g.enemies.filter(e=>!e.dead&&e.__formationVoice===0);return{stats:s,leaders:leaders.length,successors:leaders.filter(e=>e.__formationSuccessor).length,score:g.score,sync:g.sync};});
+          if(regrouped.stats.regroups<1||regrouped.stats.perfectBreaks<1||regrouped.stats.lastReaction!=='BUS REROUTE'||regrouped.leaders!==1||regrouped.successors!==1||regrouped.stats.reacting<2)throw new Error(`Formation regroup failed: ${JSON.stringify(regrouped)}`);
+          await page.screenshot({path:`${out}/03-leader-break-regroup-mobile.png`});
           if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
           await browser.close();
           NODE
