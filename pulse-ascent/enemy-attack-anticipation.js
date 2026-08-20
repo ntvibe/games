@@ -35,21 +35,16 @@ waitFor().then(game=>{
     state.progress=w;
     state.modules.forEach((m,i)=>{
       const b=state.base[i];m.scale.copy(b);
-      const role=m.userData.variantRole||'',side=i%2?1:-1;
+      const role=m.userData.variantRole||'';
       if(a===0){
-        // Signal Grid compresses like a bus latch before snapping the shot down the lane.
         if(role==='bus'||i>0){m.scale.x=b.x*(1-.14*w);m.scale.y=b.y*(1+.09*w);m.scale.z=b.z*(1+.04*w);}
       }else if(a===1){
-        // Glass Temple visibly opens its mirrored wings before crossfire.
         if(role==='mirror-wing'){m.scale.x=b.x*(1+.24*w);m.scale.y=b.y*(1+.08*w);m.scale.z=b.z*(1-.05*w);}else if(role==='spire')m.scale.y=b.y*(1+.12*w);
       }else if(a===2){
-        // Chroma Sea winds the helix tighter through depth before releasing the delayed wave.
         const voice=.55+.45*Math.sin(i*1.7+p*Math.PI);m.scale.x=b.x*(1+.07*w*voice);m.scale.y=b.y*(1-.04*w*voice);m.scale.z=b.z*(1+.16*w*voice);
       }else if(a===3){
-        // Organic branches draw inward like tendons loading before the fork attack.
         if(role==='branch'){m.scale.x=b.x*(1-.07*w);m.scale.y=b.y*(1+.2*w);m.scale.z=b.z*(1-.05*w);}else if(role==='seed')m.scale.set(b.x*(1+.06*w),b.y*(1+.06*w),b.z*(1+.06*w));
       }else{
-        // Neural Cathedral counts choir pods into the chord one voice at a time.
         if(role==='choir-pod'){const voice=i%4,gate=clamp(p*4-voice*.55,0,1),pulse=Math.sin(gate*Math.PI*.5)*w;m.scale.set(b.x*(1+.12*pulse),b.y*(1+.22*pulse),b.z*(1+.12*pulse));}
         else if(role==='lancet')m.scale.y=b.y*(1+.08*w);
       }
@@ -58,6 +53,7 @@ waitFor().then(game=>{
   }
 
   function restore(state){
+    if(!state)return;
     state.modules.forEach((m,i)=>m.scale.copy(state.base[i]));
     if(state.source?.__fusionModel)state.source.__fusionModel.rotation.z=state.modelRotZ;
     if(state.source?.__attackAnticipation===state)delete state.source.__attackAnticipation;
@@ -67,11 +63,12 @@ waitFor().then(game=>{
     if(!threat||threat.dead||!threat.__areaAttackSignature||threat.__attackAnticipationArmed)return;
     const a=area(),source=nearestSource(threat),duration=WINDUP[a]||.16;
     if(!source)return;
-    const poseState=capture(source,a,duration);if(!poseState)return;
+    const ownsPose=!source.__attackAnticipation,poseState=ownsPose?capture(source,a,duration):null;
+    if(ownsPose&&!poseState)return;
     const originalSpeed=threat.speed||24;
     threat.__attackAnticipationArmed=true;threat.__attackSource=source;threat.__attackWindup=duration;threat.__attackOriginalSpeed=originalSpeed;
     threat.speed=0;if(threat.group)threat.group.visible=false;
-    const item={threat,source,pose:poseState,start:now(),duration,originalSpeed,area:a};active.add(item);armed++;lastArea=a+1;lastName=AREA_NAMES[a];
+    const item={threat,source,pose:poseState,start:now(),duration,originalSpeed,area:a,ownsPose};active.add(item);armed++;lastArea=a+1;lastName=AREA_NAMES[a];
   }
 
   const baseSpawn=game.spawnEnemy.bind(game);
@@ -84,11 +81,11 @@ waitFor().then(game=>{
   function tick(){
     const t=now();
     for(const item of [...active]){
-      const {threat,source,pose:poseState,start,duration,originalSpeed}=item;
-      if(!threat||threat.dead||!source||source.dead){restore(poseState);active.delete(item);continue;}
-      const p=clamp((t-start)/Math.max(.001,duration),0,1);pose(poseState,p);
+      const {threat,source,pose:poseState,start,duration,originalSpeed,ownsPose}=item;
+      if(!threat||threat.dead||!source||source.dead){if(ownsPose)restore(poseState);active.delete(item);continue;}
+      const p=clamp((t-start)/Math.max(.001,duration),0,1);if(ownsPose&&poseState)pose(poseState,p);
       if(p>=1){
-        restore(poseState);threat.speed=originalSpeed;if(threat.group)threat.group.visible=true;threat.__attackLaunched=true;threat.__attackLaunchTime=t;active.delete(item);launched++;
+        if(ownsPose)restore(poseState);threat.speed=originalSpeed;if(threat.group)threat.group.visible=true;threat.__attackLaunched=true;threat.__attackLaunchTime=t;active.delete(item);launched++;
         game.haptic?.(reduced()?4:7);
       }
     }
@@ -96,8 +93,7 @@ waitFor().then(game=>{
   }requestAnimationFrame(tick);
 
   window.__pulseEnemyAttackAnticipation={
-    areaNames:AREA_NAMES,windups:WINDUP,
-    arm,
-    stats:()=>({active:active.size,armed,launched,lastArea,lastName,states:[...active].map(x=>({area:x.area+1,name:AREA_NAMES[x.area],progress:Number(x.pose.progress.toFixed(3)),visible:x.threat.group?.visible!==false,speed:x.threat.speed||0}))})
+    areaNames:AREA_NAMES,windups:WINDUP,arm,
+    stats:()=>({active:active.size,armed,launched,lastArea,lastName,states:[...active].map(x=>({area:x.area+1,name:AREA_NAMES[x.area],progress:Number((x.pose?.progress||0).toFixed(3)),visible:x.threat.group?.visible!==false,speed:x.threat.speed||0,ownsPose:x.ownsPose}))})
   };
 });
