@@ -49,15 +49,13 @@ jobs:
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
           await page.click('#startBtn');
           await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseAreaEnemyAttacks&&window.__pulseThreatReadability,{timeout:15000});
-          const state=await page.evaluate(()=>{
-            const g=window.__pulseAscent;
+          const state=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent;
             window.__pulseCampaign.state.selected=2;g.bar=20;g.section=2;
             for(let i=0;i<5;i++)g.spawnEnemy('drone',new THREE.Vector3((i-2)*2,0,-18-i*3),2);
             const before=g.enemies.length;
             window.__pulseAreaEnemyAttacks.trigger(6);
             return {before,attack:window.__pulseAreaEnemyAttacks.stats()};
-          }).catch(async()=>{
-            return await page.evaluate(()=>{const g=window.__pulseAscent;g.bar=20;g.section=2;return{attack:window.__pulseAreaEnemyAttacks.stats()}});
           });
           await page.waitForTimeout(500);
           const read=await page.evaluate(()=>{const g=window.__pulseAscent,r=window.__pulseThreatReadability.stats(),threats=g.enemies.filter(e=>e.type==='danger'&&!e.dead);return{...r,threats:threats.length,guides:threats.filter(e=>e.__readabilityGuide).length,normal:threats.every(e=>e.__readabilityGuide?.path?.material?.blending===1)};});
