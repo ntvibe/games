@@ -1,0 +1,87 @@
+name: Pulse Ascent boss damage staging
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-boss-damage-check.yml'
+  workflow_dispatch:
+jobs:
+  boss-damage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/boss-damage-staging.js
+          grep -q "boss-damage-staging.js" pulse-ascent/model-fusion.js
+          grep -q "boss-damage-staging.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v35" pulse-ascent/service-worker.js
+          grep -q "boss-armor-plate" pulse-ascent/boss-damage-staging.js
+          grep -q "boss-exposed-internals" pulse-ascent/boss-damage-staging.js
+          grep -q "boss-structural-cracks" pulse-ascent/boss-damage-staging.js
+          grep -q "NormalBlending" pulse-ascent/boss-damage-staging.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise staged boss damage
+        run: |
+          cat >/tmp/boss-damage.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='boss-damage-evidence';fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({complete:true,step:5})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
+          await page.waitForFunction(()=>window.__pulseModelFusion?.ready&&window.__pulseBossTopology&&window.__pulseBossDamageStaging,{timeout:18000});
+          await page.evaluate(async()=>{
+            const g=window.__pulseAscent;for(const e of [...g.enemies])e.dispose?.();g.enemies=[];
+            const {Boss}=await import('/pulse-ascent/entities.js');
+            const b=new Boss(g);b.group.position.set(0,0,-13);g.boss=b;window.__pulseBossTopology.patchBoss(b);window.__pulseBossDamageStaging.patchBoss(b);
+            await new Promise(r=>setTimeout(r,250));
+          });
+          const intact=await page.evaluate(()=>window.__pulseBossDamageStaging.stats());
+          if(!intact.patched||intact.plates!==8||!intact.normal)throw new Error(`Initial boss stage invalid: ${JSON.stringify(intact)}`);
+          await page.screenshot({path:`${out}/01-boss-intact-mobile.png`});
+          const breached=await page.evaluate(async()=>{
+            const g=window.__pulseAscent,b=g.boss;b.parts[0].hp=0;b.parts[0].dead=true;b.hp=82;b.phase=2;window.__pulseBossDamageStaging.breach(b,0);await new Promise(r=>setTimeout(r,180));return window.__pulseBossDamageStaging.stats();
+          });
+          if(breached.phase!==2||breached.breaches<1||breached.crackOpacity<=.1||breached.coreOpacity<=intact.coreOpacity)throw new Error(`Phase 2 breach invalid: ${JSON.stringify({intact,breached})}`);
+          await page.screenshot({path:`${out}/02-boss-breached-mobile.png`});
+          const exposed=await page.evaluate(async()=>{const b=window.__pulseAscent.boss;b.hp=34;b.phase=3;await new Promise(r=>setTimeout(r,180));return window.__pulseBossDamageStaging.stats();});
+          if(exposed.phase!==3||exposed.coreOpacity<=breached.coreOpacity)throw new Error(`Phase 3 exposure invalid: ${JSON.stringify({breached,exposed})}`);
+          await page.screenshot({path:`${out}/03-boss-core-exposed-mobile.png`});
+          const death=await page.evaluate(async()=>{const b=window.__pulseAscent.boss;b.kill();await new Promise(r=>setTimeout(r,100));return window.__pulseBossDamageStaging.stats();});
+          if(death.deathDisassemblies<1)throw new Error(`Boss death disassembly missing: ${JSON.stringify(death)}`);
+          await page.screenshot({path:`${out}/04-boss-death-disassembly-mobile.png`});
+          if(errors.length)throw new Error(errors.join('\n'));
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({intact,breached,exposed,death,errors},null,2));
+          await browser.close();
+          NODE
+          node /tmp/boss-damage.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-boss-damage
+          path: boss-damage-evidence/
+          if-no-files-found: warn
+          retention-days: 7
