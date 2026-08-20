@@ -60,18 +60,26 @@ jobs:
           const variants=await page.evaluate(async()=>{
             const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
             g.enemies.forEach(e=>e.dispose?.());g.enemies=[];
-            const expected=['SIGNAL GRID','PRISM CROWN','CHROMA HELIX','ORGANIC FORK','NEURAL LANCET'],made=[];
+            const expected=['SIGNAL GRID','PRISM CROWN','CHROMA HELIX','ORGANIC FORK','NEURAL LANCET'];
+            const expectedMotions=['GRID PULSE','MIRROR BREATH','HELIX ORBIT','BRANCH FLEX','CHOIR PHASE'],made=[];
             for(let i=0;i<5;i++){
               c.state.selected=i+1;
               const e=g.spawnEnemy('sentinel',new THREE.Vector3((i-2)*2.1,(i%2?.55:-.45),-17-i*.65),i*.2);if(e)made.push(e);
               await new Promise(r=>setTimeout(r,80));
             }
-            await new Promise(r=>setTimeout(r,1000));
-            return{expected,variants:made.map(e=>e.__fusionVariant),roles:made.map(e=>e.__fusionModel?.children.filter(c=>c.name==='rez-volume-model').map(c=>c.userData.variantRole)||[]),stats:window.__pulseModelFusion.stats()};
+            await new Promise(r=>setTimeout(r,750));
+            const before=made.map(e=>e.__fusionModel?.children.filter(c=>c.name==='rez-volume-model').map(c=>[c.position.x,c.position.y,c.position.z,c.rotation.x,c.rotation.y,c.rotation.z])||[]);
+            made.forEach((e,i)=>{e.locked=i%2===1;});
+            await new Promise(r=>setTimeout(r,520));
+            const after=made.map(e=>e.__fusionModel?.children.filter(c=>c.name==='rez-volume-model').map(c=>[c.position.x,c.position.y,c.position.z,c.rotation.x,c.rotation.y,c.rotation.z])||[]);
+            const motionChanged=after.map((entry,i)=>entry.some((v,j)=>v.some((n,k)=>Math.abs(n-(before[i]?.[j]?.[k]??n))>.0005)));
+            return{expected,expectedMotions,variants:made.map(e=>e.__fusionVariant),motions:made.map(e=>e.__motionRig?.areaMotion),motionChanged,roles:made.map(e=>e.__fusionModel?.children.filter(c=>c.name==='rez-volume-model').map(c=>c.userData.variantRole)||[]),stats:window.__pulseModelFusion.stats(),motionStats:window.__pulseEnemyMotionRigs.stats()};
           });
           if(JSON.stringify(variants.variants)!==JSON.stringify(variants.expected))throw new Error(`Area variants invalid: ${JSON.stringify(variants)}`);
+          if(JSON.stringify(variants.motions)!==JSON.stringify(variants.expectedMotions))throw new Error(`Area motion identities invalid: ${JSON.stringify(variants)}`);
+          if(variants.motionChanged.some(v=>!v))throw new Error(`Area motion did not animate: ${JSON.stringify(variants)}`);
           if(variants.roles.some(r=>!r.length||r.some(v=>!v)))throw new Error(`Area variant roles missing: ${JSON.stringify(variants)}`);
-          await page.waitForTimeout(300);await page.screenshot({path:`${out}/area-silhouettes-mobile.png`,fullPage:true});
+          await page.waitForTimeout(300);await page.screenshot({path:`${out}/area-silhouettes-motion-mobile.png`,fullPage:true});
           fs.writeFileSync(`${out}/state.json`,JSON.stringify({result,variants,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));
           console.log(JSON.stringify({result,variants},null,2));
