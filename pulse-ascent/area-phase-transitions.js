@@ -1,6 +1,6 @@
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
-const waitFor=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent&&window.__pulseCampaign&&window.__pulseTopologyWorlds&&window.__pulseTopologyMorph&&window.__pulseAreaAudio?resolve(window.__pulseAscent):requestAnimationFrame(tick);tick();});
+const waitFor=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent&&window.__pulseCampaign&&window.__pulseTopologyWorlds&&window.__pulseAreaAudio?resolve(window.__pulseAscent):requestAnimationFrame(tick);tick();});
 
 const PHASE_ACCENTS=[
   [0,7,12],      // SIGNAL BIRTH: clean machine fifth/octave
@@ -44,7 +44,7 @@ waitFor().then(game=>{
     state.area=area;state.phase=phase;state.name=resolved;state.pulse=phase===0?.35:1;state.transitions++;state.lastAt=game.time||0;
     updateHud(area,phase,resolved);
     if(!isTraining()&&phase>0){
-      window.__pulseTopologyMorph?.trigger?.();
+      // topology-morph already reacts to setSection; this layer adds presentation without retriggering it.
       playAccent(area,phase);
       game.cameraKick=Math.max(game.cameraKick||0,.045+phase*.018);
       if(phase<4)game.showCallout?.(`PHASE ${String(phase+1).padStart(2,'0')} // ${resolved}`,.94);
