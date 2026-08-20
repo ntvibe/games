@@ -82,8 +82,7 @@ waitFor().then(game=>{
     if(!batch||batch.done)return;
     let count=0;
     for(const enemy of batch.members){
-      if(enemy.dead)continue;
-      if(enemy.__formationVoice!==voice)continue;
+      if(enemy.dead||enemy.__formationVoice!==voice)continue;
       const r=enemy.__revealState;if(!r||r.activated)continue;
       window.__pulseEnemyReveal.activate(enemy,true);count++;state.activated++;
     }
@@ -95,7 +94,7 @@ waitFor().then(game=>{
     if(!remaining){batch.done=true;state.completed++;state.formations.delete(batch.id);}
   }
 
-  game.audio?.onStep?.((step)=>{
+  function processStep(step){
     for(const batch of [...state.formations.values()]){
       if(batch.done)continue;
       const live=batch.members.filter(e=>!e.dead&&e.__revealState&&!e.__revealState.activated);
@@ -109,11 +108,10 @@ waitFor().then(game=>{
       if(elapsed<0||elapsed%stride!==0)continue;
       const voice=Math.floor(elapsed/stride);
       if(voice<batch.voiceCount)activateVoice(batch,voice);
-      else{
-        for(const enemy of live)window.__pulseEnemyReveal.activate(enemy,true);
-      }
+      else for(const enemy of live)window.__pulseEnemyReveal.activate(enemy,true);
     }
-  });
+  }
+  game.audio?.onStep?.(processStep);
 
   const tick=()=>{
     for(const batch of state.formations.values()){
@@ -137,6 +135,7 @@ waitFor().then(game=>{
   window.__pulseFormationReveal={
     queue,
     finalize:()=>finalize(state.open),
+    processStep,
     stats:()=>({active:state.formations.size,directed:state.directed,activated:state.activated,completed:state.completed,lastGrammar:state.lastFormation?.grammar||'',lastSize:state.lastFormation?.members?.length||0,comfort:comfort(),direct:direct()})
   };
 });
