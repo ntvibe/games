@@ -14,7 +14,7 @@ function makeRevealIris(game,color,hero=false){
   // Faceted aperture language: no solid rectangles, only converging topology blades.
   seg(-r,-r*.52,-r*.46,0);seg(-r,r*.52,-r*.46,0);
   seg(r,-r*.52,r*.46,0);seg(r,r*.52,r*.46,0);
-  seg(-r*.48,-r,r*.0,-r*.48);seg(r*.48,-r,0,-r*.48);
+  seg(-r*.48,-r,0,-r*.48);seg(r*.48,-r,0,-r*.48);
   seg(-r*.48,r,0,r*.48);seg(r*.48,r,0,r*.48);
   if(hero){seg(-r*.72,-r*.72,-r*.34,-r*.34);seg(r*.72,-r*.72,r*.34,-r*.34);seg(-r*.72,r*.72,-r*.34,r*.34);seg(r*.72,r*.72,r*.34,r*.34);}
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
