@@ -1,0 +1,88 @@
+name: Pulse Ascent enemy reveal check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-enemy-reveal-check.yml'
+  workflow_dispatch:
+jobs:
+  enemy-reveal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check enemy reveal integration
+        run: |
+          node --check --input-type=module < pulse-ascent/enemy-reveal-director.js
+          grep -q "enemy-reveal-director.js" pulse-ascent/index.html
+          grep -q "__pulseEnemyReveal" pulse-ascent/enemy-reveal-director.js
+          grep -q "__revealLocked" pulse-ascent/enemy-reveal-director.js
+          grep -q "NormalBlending" pulse-ascent/enemy-reveal-director.js
+          grep -q "frameEncounter" pulse-ascent/enemy-reveal-director.js
+          grep -q "enemy-reveal-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v40" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-reveal-server.log 2>&1 &
+          sleep 2
+      - name: Exercise authored enemy reveal
+        run: |
+          cat > /tmp/enemy-reveal.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-enemy-reveal';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844}});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseEnemyReveal&&window.__pulseRailCamera,{timeout:15000});
+          await page.waitForTimeout(500);
+          await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent;
+            g.spawnEnemy('sentinel',new THREE.Vector3(3.2,.7,-24),2);
+          });
+          await page.waitForFunction(()=>window.__pulseAscent.enemies.some(e=>e.type==='sentinel'&&e.__revealDirected),{timeout:3000});
+          const hidden=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent,e=[...g.enemies].reverse().find(x=>x.type==='sentinel'&&x.__revealDirected&&!x.dead),s=window.__pulseEnemyReveal.stats();
+            const iris=g.scene.getObjectByName('enemy-reveal-iris');
+            return{locked:!!e?.__revealLocked,targetable:g.getTargetList().includes(e),pending:s.pending,irises:s.irises,heroFrames:s.heroFrames,normal:iris?.material?.blending===THREE.NormalBlending};
+          });
+          if(!hidden.locked||hidden.targetable||hidden.pending<1||hidden.irises<1||!hidden.normal)throw new Error(`Reveal hold failed: ${JSON.stringify(hidden)}`);
+          await page.screenshot({path:`${out}/01-silhouette-hold-mobile.png`});
+
+          await page.waitForFunction(()=>{const e=[...window.__pulseAscent.enemies].reverse().find(x=>x.type==='sentinel'&&x.__revealDirected&&!x.dead);return e&&!e.__revealLocked;},{timeout:2200});
+          await page.waitForTimeout(100);
+          const active=await page.evaluate(()=>{const g=window.__pulseAscent,e=[...g.enemies].reverse().find(x=>x.type==='sentinel'&&x.__revealDirected&&!x.dead),s=window.__pulseEnemyReveal.stats();return{targetable:g.getTargetList().includes(e),activated:s.activated,pending:s.pending,heroFrames:s.heroFrames,reveal:window.__pulseRailCamera.stats().reveal};});
+          if(!active.targetable||active.activated<1||active.heroFrames<1)throw new Error(`Beat activation failed: ${JSON.stringify(active)}`);
+          await page.screenshot({path:`${out}/02-beat-activation-mobile.png`});
+
+          await page.emulateMedia({reducedMotion:'reduce'});
+          await page.evaluate(async()=>{const THREE=await import('three');window.__pulseAscent.spawnEnemy('node',new THREE.Vector3(-3,.4,-25),1);});
+          await page.waitForFunction(()=>window.__pulseEnemyReveal.stats().comfort,{timeout:1500});
+          const reduced=await page.evaluate(()=>window.__pulseEnemyReveal.stats());
+          if(!reduced.comfort)throw new Error(`Reduced-motion reveal comfort missing: ${JSON.stringify(reduced)}`);
+          await page.screenshot({path:`${out}/03-reduced-motion-reveal-mobile.png`});
+          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
+          await browser.close();
+          NODE
+          node /tmp/enemy-reveal.mjs
+      - name: Upload enemy reveal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-enemy-reveal
+          path: pulse-ascent-enemy-reveal
+          if-no-files-found: warn
