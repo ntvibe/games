@@ -29,8 +29,9 @@ waitFor().then(game=>{
   function leaderTone(enemy){
     const audio=game.audio,t=audio?.ctx?.currentTime;if(t===undefined||!audio?.osc)return;
     const root=(audio.rootMidi||43)+[31,36,38,34,43][area()];
-    audio.osc('triangle',audio.midi(root),t+.004,.055,.009,audio.fx,0,enemy.group.position.x<0?-.24:.24);
-    audio.osc('sine',audio.midi(root+7),t+.035,.08,.006,audio.fx,0,enemy.group.position.x<0?.2:-.2);
+    const pan=enemy.group.position.x<0 ? -.24 : .24;
+    audio.osc('triangle',audio.midi(root),t+.004,.055,.009,audio.fx,0,pan);
+    audio.osc('sine',audio.midi(root+7),t+.035,.08,.006,audio.fx,0,-pan*.82);
   }
 
   function ensure(enemy){
@@ -51,11 +52,13 @@ waitFor().then(game=>{
       if(enemy.dead||!enemy.__formationId||enemy.__formationVoice!==0||!enemy.group)continue;
       live.add(enemy);const m=ensure(enemy);if(!m)continue;
       const p=enemy.group.getWorldPosition(new THREE.Vector3());
-      p.y+=1.35+((enemy.type==='tank'||enemy.type==='sentinel')?.22:0);
+      const heroLift=(enemy.type==='tank'||enemy.type==='sentinel') ? .22 : 0;
+      p.y+=1.35+heroLift;
       m.line.position.copy(p);m.line.quaternion.copy(game.camera.quaternion);
-      const targetable=!enemy.__revealLocked,locked=!!enemy.locked,base=mobile()?.82:.92,comfortScale=comfort()?.92:1;
-      m.line.scale.setScalar(base*comfortScale*(1+(locked?.12:.04)*pulse));
-      m.mat.opacity=targetable?(locked?.82:.5+pulse*.08):.25;
+      const targetable=!enemy.__revealLocked,locked=!!enemy.locked;
+      const base=mobile() ? .82 : .92,comfortScale=comfort() ? .92 : 1,lockPulse=locked ? .12 : .04;
+      m.line.scale.setScalar(base*comfortScale*(1+lockPulse*pulse));
+      m.mat.opacity=targetable ? (locked ? .82 : .5+pulse*.08) : .25;
       if(targetable&&!m.shown){m.shown=true;state.cues++;if(!state.hinted.has(enemy.__formationId)&&state.hinted.size<2){state.hinted.add(enemy.__formationId);game.showCallout?.('COMMAND TARGET // BREAK FIRST',.68);}}
       if(locked&&!m.locked&&now-state.lastLockAt>.28){leaderTone(enemy);state.lockCues++;state.lastLockAt=now;}
       m.locked=locked;
