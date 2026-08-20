@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './formation-consequence-director.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mobile=()=>innerWidth<760||innerHeight<520||matchMedia('(pointer: coarse)').matches;
@@ -118,7 +119,6 @@ waitFor().then(game=>{
       if(batch.done)continue;
       for(const enemy of batch.members){
         if(enemy.dead||!enemy.__revealState||enemy.__revealState.activated)continue;
-        // Give followers a subtle authored fan-out before activation without fighting their normal path.
         const voice=enemy.__formationVoice||0,lead=batch.members[0];
         if(voice>0&&lead?.group){
           const dir=Math.sign(enemy.group.position.x-lead.group.position.x)||((voice%2)?1:-1);
