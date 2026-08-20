@@ -46,16 +46,13 @@ jobs:
           });
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
           await page.waitForFunction(()=>window.__pulseCampaign&&window.__pulseAreaCombatGrammar,{timeout:12000});
-          window;
           await page.click('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
           const mirror=await page.evaluate(()=>{
-            const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];g.bar=20;g.setSection(2,'MIRROR SANCTUM');
-            for(let i=0;i<6;i++)g.spawnEnemy('drone',new THREE.Vector3((i-2.5)*1.7,(i%2?1:-1)*1.2,-28-i*2));
+            const g=window.__pulseAscent,V=g.camera.position.constructor;
+            g.enemies.forEach(e=>e.dispose?.());g.enemies=[];g.bar=20;g.setSection(2,'MIRROR SANCTUM');
+            for(let i=0;i<6;i++)g.spawnEnemy('drone',new V((i-2.5)*1.7,(i%2?1:-1)*1.2,-28-i*2));
             return window.__pulseAreaCombatGrammar.stats();
-          }).catch(async()=>page.evaluate(()=>{
-            const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];g.bar=20;g.setSection(2,'MIRROR SANCTUM');
-            const V=g.camera.position.constructor;for(let i=0;i<6;i++)g.spawnEnemy('drone',new V((i-2.5)*1.7,(i%2?1:-1)*1.2,-28-i*2));return window.__pulseAreaCombatGrammar.stats();
-          }));
+          });
           await page.waitForTimeout(900);
           const mirrorState=await page.evaluate(()=>({stats:window.__pulseAreaCombatGrammar.stats(),xs:window.__pulseAscent.enemies.filter(e=>!e.dead&&e.type!=='danger').map(e=>e.group.position.x),bound:window.__pulseAscent.enemies.filter(e=>e.__areaCombatGrammar&&!e.dead).length}));
           if(mirrorState.stats.name!=='MIRROR PAIRS'||mirrorState.bound<4||mirrorState.xs.some(x=>Math.abs(x)>8.8))throw new Error(`Mirror grammar invalid: ${JSON.stringify(mirrorState)}`);
@@ -67,7 +64,6 @@ jobs:
           if(errors.length)throw new Error(errors.join('\n'));
           await browser.close();
           NODE
-          # Inject Three-free fallback path by relying on the game's camera Vector3 constructor.
           node /tmp/phase-combat.mjs
       - name: Upload phase combat evidence
         if: always()
