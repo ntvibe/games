@@ -1,0 +1,83 @@
+name: Pulse Ascent formation reveal check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-formation-reveal-check.yml'
+  workflow_dispatch:
+jobs:
+  formation-reveal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check formation reveal integration
+        run: |
+          node --check --input-type=module < pulse-ascent/formation-reveal-director.js
+          grep -q "formation-reveal-director.js" pulse-ascent/enemy-reveal-director.js
+          grep -q "__pulseFormationReveal" pulse-ascent/formation-reveal-director.js
+          grep -q "MIRROR PHRASE" pulse-ascent/formation-reveal-director.js
+          grep -q "CHORD ENTRY" pulse-ascent/formation-reveal-director.js
+          grep -q "processStep" pulse-ascent/formation-reveal-director.js
+          grep -q "formation-reveal-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v41" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-formation-server.log 2>&1 &
+          sleep 2
+      - name: Exercise phrase-directed formation reveal
+        run: |
+          cat > /tmp/formation-reveal.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-formation-reveal';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844}});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseEnemyReveal&&window.__pulseFormationReveal&&window.__pulseRailCamera,{timeout:15000});
+          await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent;
+            clearInterval(g.audio.timer);g.audio.timer=0;
+            for(const e of [...g.enemies])e.dispose?.();g.enemies=[];
+            const specs=[['sentinel',0,0],['drone',-2.3,.9],['drone',2.3,-.9],['prism',-4,-.4],['drone',4,.5],['drone',0,1.8]];
+            for(const [type,x,y] of specs)g.spawnEnemy(type,new THREE.Vector3(x,y,-30),1);
+            window.__pulseFormationReveal.finalize();
+            for(const e of g.enemies)if(e.__revealState)e.__revealState.age=1;
+          });
+          const staged=await page.evaluate(()=>{const g=window.__pulseAscent,s=window.__pulseFormationReveal.stats();return{stats:s,voices:g.enemies.map(e=>e.__formationVoice),locked:g.enemies.filter(e=>e.__revealLocked).length};});
+          if(staged.stats.lastSize<6||staged.stats.lastGrammar!=='CASCADE'||staged.locked<6||!staged.voices.includes(0))throw new Error(`Formation staging failed: ${JSON.stringify(staged)}`);
+
+          await page.evaluate(()=>window.__pulseFormationReveal.processStep(100));
+          const leader=await page.evaluate(()=>{const g=window.__pulseAscent;return{active:g.enemies.filter(e=>!e.__revealLocked).length,locked:g.enemies.filter(e=>e.__revealLocked).length,stats:window.__pulseFormationReveal.stats(),camera:window.__pulseRailCamera.stats()};});
+          if(leader.active!==1||leader.locked!==5||leader.camera.encounters<1)throw new Error(`Leader beat failed: ${JSON.stringify(leader)}`);
+          await page.screenshot({path:`${out}/01-leader-beat-mobile.png`});
+
+          await page.evaluate(()=>{window.__pulseFormationReveal.processStep(101);window.__pulseFormationReveal.processStep(102);window.__pulseFormationReveal.processStep(103);});
+          const unfolded=await page.evaluate(()=>{const g=window.__pulseAscent;return{active:g.enemies.filter(e=>!e.__revealLocked).length,locked:g.enemies.filter(e=>e.__revealLocked).length,stats:window.__pulseFormationReveal.stats()};});
+          if(unfolded.active!==6||unfolded.locked!==0||unfolded.stats.completed<1)throw new Error(`Formation unfold failed: ${JSON.stringify(unfolded)}`);
+          await page.screenshot({path:`${out}/02-formation-unfolded-mobile.png`});
+          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
+          await browser.close();
+          NODE
+          node /tmp/formation-reveal.mjs
+      - name: Upload formation reveal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-formation-reveal
+          path: pulse-ascent-formation-reveal
+          if-no-files-found: warn
