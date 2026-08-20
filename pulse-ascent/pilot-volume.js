@@ -89,7 +89,7 @@ waitFor().then(game=>{
   };
 
   window.__pulsePilotVolume={
-    root:v.root,
+    root:v.root,solids:v.solids,plates:v.plates,halo:v.halo,
     stats:()=>({stage:STAGES[Math.round(clamp(window.__pilotTransformation?.form??0,0,3))].name,solids:v.solids.length,plates:v.plates.length,mobile:mobile(),normalBlending:v.solids.every(m=>m.material.blending===THREE.NormalBlending)})
   };
 });
