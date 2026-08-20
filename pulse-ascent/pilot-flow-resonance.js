@@ -50,8 +50,8 @@ waitFor().then(game=>{
   const baseUpdate=game.world.update.bind(game.world);
   game.world.update=(dt,t,energy,sync=0)=>{
     baseUpdate(dt,t,energy,sync);
-    const flow=window.__pulseFlowResonance?.stats?.()||{tier:0,resonance:0},tier=clamp(flow.tier|0,0,3),comfort=!!window.__pulseSettings?.state?.comfort||reducedMotion();
-    state.tier=tier;state.intensity=lerp(state.intensity,TIER_TARGET[tier],1-Math.exp(-dt*(tier>state.tier?5.5:4.2)));state.pulse=lerp(state.pulse,0,1-Math.exp(-dt*6.5));
+    const flow=window.__pulseFlowResonance?.stats?.()||{tier:0,resonance:0},tier=clamp(flow.tier|0,0,3),comfort=!!window.__pulseSettings?.state?.comfort||reducedMotion(),previousTier=state.tier;
+    state.tier=tier;state.intensity=lerp(state.intensity,TIER_TARGET[tier],1-Math.exp(-dt*(tier>previousTier?5.5:4.2)));state.pulse=lerp(state.pulse,0,1-Math.exp(-dt*6.5));
     const intensity=state.intensity,motionScale=comfort?.32:1;
     updateJointGeometry(t,intensity,tier);
 
