@@ -14,15 +14,25 @@ jobs:
         with:
           node-version: '22'
       - name: Syntax check model fusion
-        run: node --check --input-type=module < pulse-ascent/model-fusion.js
+        run: |
+          node --check --input-type=module < pulse-ascent/model-fusion.js
+          node --check --input-type=module < pulse-ascent/enemy-motion-rigs.js
       - name: Verify runtime integration
         run: |
           test -s pulse-ascent/model-fusion.js
+          test -s pulse-ascent/enemy-motion-rigs.js
           grep -q 'GLTFLoader' pulse-ascent/model-fusion.js
           grep -q 'fusion-enemy-model' pulse-ascent/model-fusion.js
           grep -q 'fusion-boss-model' pulse-ascent/model-fusion.js
           grep -q 'NormalBlending' pulse-ascent/model-fusion.js
           grep -q '__pulseModelFusion' pulse-ascent/model-fusion.js
+          grep -q 'enemy-motion-rigs.js' pulse-ascent/model-fusion.js
+          grep -q '__pulseEnemyMotionRigs' pulse-ascent/enemy-motion-rigs.js
+          grep -q "enemy.type==='tank'" pulse-ascent/enemy-motion-rigs.js
+          grep -q "enemy.type==='node'" pulse-ascent/enemy-motion-rigs.js
+          grep -q "enemy.type==='prism'" pulse-ascent/enemy-motion-rigs.js
+          grep -q "enemy.type==='sentinel'" pulse-ascent/enemy-motion-rigs.js
+          grep -q '__damageReactiveState' pulse-ascent/enemy-motion-rigs.js
           grep -q 'model-fusion.js' pulse-ascent/index.html
       - name: Verify CC0 model payload
         run: |
@@ -38,7 +48,8 @@ jobs:
           grep -q 'Kenney Blaster Kit' pulse-ascent/assets/models/cc0/PROVENANCE.md
       - name: Verify offline package coverage
         run: |
-          grep -q "pulse-ascent-v14" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v49" pulse-ascent/service-worker.js
           grep -q "model-fusion.js" pulse-ascent/service-worker.js
+          grep -q "enemy-motion-rigs.js" pulse-ascent/service-worker.js
           grep -q "factory-machine.glb" pulse-ascent/service-worker.js
           grep -q "blaster-rifle.glb" pulse-ascent/service-worker.js
