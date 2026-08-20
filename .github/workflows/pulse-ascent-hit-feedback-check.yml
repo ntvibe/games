@@ -1,0 +1,84 @@
+name: Pulse Ascent combat feedback check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-hit-feedback-check.yml'
+  workflow_dispatch:
+jobs:
+  feedback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check feedback integration
+        run: |
+          node --check --input-type=module < pulse-ascent/hit-feedback.js
+          grep -q "hit-feedback.js" pulse-ascent/index.html
+          grep -q "hit-feedback.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v33" pulse-ascent/service-worker.js
+          grep -q "NormalBlending" pulse-ascent/hit-feedback.js
+          grep -q "bossBreaks" pulse-ascent/hit-feedback.js
+          grep -q "perfectKills" pulse-ascent/hit-feedback.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 > /tmp/pulse-feedback-server.log 2>&1 &
+          sleep 2
+      - name: Exercise feedback hierarchy
+        run: |
+          cat > /tmp/pulse-feedback.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-hit-feedback';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseHitFeedback,{timeout:15000});
+          await page.waitForTimeout(500);
+          const hierarchy=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent;
+            g.enemies.forEach(e=>e.dispose?.());g.enemies=[];
+            const specs=[['drone',[-3,1,-18],'lock',.96],['tank',[3,1,-19],'lance',.94],['node',[-2,-2,-17],'swarm',.97],['danger',[2,-2,-16],'lance',.91]];
+            const created=[];
+            for(const [type,p,weapon,q] of specs){const e=g.spawnEnemy(type,new THREE.Vector3(...p),1);created.push({e,weapon,q});}
+            await new Promise(r=>setTimeout(r,120));
+            for(const {e,weapon,q} of created){e.__hitFeedbackCtx={weapon,q,at:performance.now(),index:0,total:1};e.hit(99);await new Promise(r=>setTimeout(r,35));}
+            await new Promise(r=>setTimeout(r,35));
+            const s=window.__pulseHitFeedback.stats(),effects=g.scene.children.filter(o=>o.name?.startsWith('combat-feedback-'));
+            return{stats:{kills:s.kills,eliteKills:s.eliteKills,nodeKills:s.nodeKills,perfectKills:s.perfectKills,intercepts:s.intercepts,active:s.active},names:effects.map(o=>o.name),normal:effects.every(o=>o.material?.blending===THREE.NormalBlending)};
+          });
+          if(hierarchy.stats.kills<4||hierarchy.stats.eliteKills<1||hierarchy.stats.nodeKills<1||hierarchy.stats.intercepts<1||hierarchy.stats.perfectKills<4||!hierarchy.normal)throw new Error(`Feedback hierarchy failed: ${JSON.stringify(hierarchy)}`);
+          await page.screenshot({path:`${out}/01-feedback-hierarchy-mobile.png`});
+
+          await page.evaluate(()=>{const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];g.onStep(40*16,g.audio.ctx.currentTime);});
+          await page.waitForFunction(()=>window.__pulseAscent.boss&&window.__pulseAscent.boss.__hitFeedbackWrapped===true,{timeout:10000});
+          const boss=await page.evaluate(()=>{const g=window.__pulseAscent,b=g.boss,p=b.parts.find(x=>!x.dead);p.__hitFeedbackCtx={weapon:'lance',q:.96,at:performance.now(),index:0,total:1};p.hp=1;b.hitPart(p,1);const s=window.__pulseHitFeedback.stats();return{bossBreaks:s.bossBreaks,perfectKills:s.perfectKills,activeKinds:s.activeKinds};});
+          if(boss.bossBreaks<1||!boss.activeKinds.some(n=>n==='combat-feedback-boss'))throw new Error(`Boss feedback failed: ${JSON.stringify(boss)}`);
+          await page.waitForTimeout(80);await page.screenshot({path:`${out}/02-boss-break-mobile.png`});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({hierarchy,boss,errors},null,2));
+          if(errors.length)throw new Error(errors.join('\n'));
+          await browser.close();
+          NODE
+          node /tmp/pulse-feedback.mjs
+      - name: Upload feedback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-hit-feedback
+          path: pulse-ascent-hit-feedback/
+          if-no-files-found: warn
+          retention-days: 7
