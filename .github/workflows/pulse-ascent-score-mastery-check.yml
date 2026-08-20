@@ -18,16 +18,25 @@ jobs:
         run: |
           node --check --input-type=module < pulse-ascent/score-mastery-feedback.js
           node --check --input-type=module < pulse-ascent/flow-resonance.js
+          node --check --input-type=module < pulse-ascent/pilot-flow-resonance.js
+          node --check --input-type=module < pulse-ascent/pilot-volume.js
           node --check --input-type=module < pulse-ascent/formation-consequence-director.js
           node --check --input-type=module < pulse-ascent/weapon-rhythm-mastery.js
           grep -q "score-mastery-feedback.js" pulse-ascent/index.html
           grep -q "flow-resonance.js" pulse-ascent/score-mastery-feedback.js
+          grep -q "pilot-flow-resonance.js" pulse-ascent/flow-resonance.js
           grep -q "THRESHOLDS=\[1,2,4,6\]" pulse-ascent/flow-resonance.js
           grep -q "FLOW adds musical stems" pulse-ascent/flow-resonance.js
+          grep -q "pilot-flow-resonance" pulse-ascent/pilot-flow-resonance.js
+          grep -q "controlled dematerialization" pulse-ascent/pilot-flow-resonance.js
+          grep -q "NormalBlending" pulse-ascent/pilot-flow-resonance.js
+          grep -q "plates:v.plates" pulse-ascent/pilot-volume.js
           grep -q "pulse:skill-reward" pulse-ascent/formation-consequence-director.js
           grep -q "LANCE RESONANCE" pulse-ascent/weapon-rhythm-mastery.js
           grep -q "score-mastery-feedback.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v45" pulse-ascent/service-worker.js
+          grep -q "flow-resonance.js" pulse-ascent/service-worker.js
+          grep -q "pilot-flow-resonance.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v46" pulse-ascent/service-worker.js
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -52,7 +61,7 @@ jobs:
           await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
           await page.click('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseScoreMasteryFeedback&&window.__pulseFlowResonance,{timeout:15000});
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseScoreMasteryFeedback&&window.__pulseFlowResonance&&window.__pulsePilotFlowResonance,{timeout:15000});
           await page.evaluate(()=>{const g=window.__pulseAscent;clearInterval(g.audio.timer);g.audio.timer=0;g.mult=3.42;g.scoreTiming(1,8);});
           await page.waitForTimeout(160);
           let state=await page.evaluate(()=>({stats:window.__pulseScoreMasteryFeedback.stats(),flow:document.querySelector('#mfFlow')?.textContent,skill:document.querySelector('#mfSkill')?.textContent,rows:[...document.querySelectorAll('.mf-reward')].map(e=>e.textContent)}));
@@ -60,13 +69,18 @@ jobs:
           await page.screenshot({path:`${out}/01-perfect-flow-mobile.png`});
 
           for(const [mult,tier,name] of [[2.1,1,'DRIVE'],[4.1,2,'RESONANCE'],[6.1,3,'ASCENT']]){
-            await page.evaluate(v=>window.__pulseAscent.mult=v,mult);await page.waitForTimeout(120);
-            const flowState=await page.evaluate(()=>({flow:window.__pulseFlowResonance.stats(),tier:document.querySelector('#masteryFeedback')?.dataset.flowTier,label:document.querySelector('.mf-flow-state')?.textContent}));
-            if(flowState.flow.tier!==tier||flowState.tier!==String(tier)||flowState.label!==name)throw new Error(`FLOW tier failed @${mult}: ${JSON.stringify(flowState)}`);
+            await page.evaluate(v=>window.__pulseAscent.mult=v,mult);await page.waitForTimeout(190);
+            const flowState=await page.evaluate(()=>({flow:window.__pulseFlowResonance.stats(),pilot:window.__pulsePilotFlowResonance.stats(),tier:document.querySelector('#masteryFeedback')?.dataset.flowTier,label:document.querySelector('.mf-flow-state')?.textContent}));
+            if(flowState.flow.tier!==tier||flowState.tier!==String(tier)||flowState.label!==name||flowState.pilot.tier!==tier)throw new Error(`FLOW tier failed @${mult}: ${JSON.stringify(flowState)}`);
+            if(tier===1&&flowState.pilot.intensity<=.08)throw new Error(`FLOW DRIVE pilot posture failed: ${JSON.stringify(flowState.pilot)}`);
+            if(tier===2&&flowState.pilot.traceOpacity<=.01)throw new Error(`FLOW RESONANCE pilot traces failed: ${JSON.stringify(flowState.pilot)}`);
           }
-          const topology=await page.evaluate(()=>{const a=(window.__pulseCampaign?.state?.selected||1)-1,w=window.__pulseTopologyWorlds?.worlds?.[a];return {tier:window.__pulseFlowResonance.stats().tier,resonance:window.__pulseFlowResonance.stats().resonance,packetOpacity:w?.packetMat?.opacity||0};});
+          await page.waitForTimeout(420);
+          const topology=await page.evaluate(()=>{const a=(window.__pulseCampaign?.state?.selected||1)-1,w=window.__pulseTopologyWorlds?.worlds?.[a];return {tier:window.__pulseFlowResonance.stats().tier,resonance:window.__pulseFlowResonance.stats().resonance,packetOpacity:w?.packetMat?.opacity||0,pilot:window.__pulsePilotFlowResonance.stats()};});
           if(topology.tier!==3||topology.resonance<=.2||topology.packetOpacity<=.2)throw new Error(`FLOW audiovisual response failed: ${JSON.stringify(topology)}`);
+          if(topology.pilot.dematerialization<=.15||topology.pilot.pointOpacity<=.08||topology.pilot.plates<8||!topology.pilot.normalBlending)throw new Error(`FLOW ASCENT pilot transformation failed: ${JSON.stringify(topology.pilot)}`);
           await page.screenshot({path:`${out}/02-flow-ascent-mobile.png`});
+          await page.screenshot({path:`${out}/02b-flow-pilot-ascent-mobile.png`,clip:{x:100,y:350,width:190,height:330}});
 
           await page.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:skill-reward',{detail:{label:'COMMAND BREAK',points:840,quality:.9,kind:'command'}})));
           await page.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:traversal-gate',{detail:{success:true,risk:true,award:1200,quality:.94}})));
@@ -76,9 +90,9 @@ jobs:
           await page.screenshot({path:`${out}/03-skill-chain-mobile.png`});
 
           await page.evaluate(()=>window.__pulseAscent.takeHit());
-          await page.waitForTimeout(100);
-          state=await page.evaluate(()=>({mastery:window.__pulseScoreMasteryFeedback.stats(),flow:window.__pulseFlowResonance.stats(),tier:document.querySelector('#masteryFeedback')?.dataset.flowTier}));
-          if(state.mastery.skillChain!==0||state.flow.tier!==0||state.tier!=='0')throw new Error(`Damage reset failed: ${JSON.stringify(state)}`);
+          await page.waitForTimeout(120);
+          state=await page.evaluate(()=>({mastery:window.__pulseScoreMasteryFeedback.stats(),flow:window.__pulseFlowResonance.stats(),pilot:window.__pulsePilotFlowResonance.stats(),tier:document.querySelector('#masteryFeedback')?.dataset.flowTier}));
+          if(state.mastery.skillChain!==0||state.flow.tier!==0||state.pilot.tier!==0||state.tier!=='0')throw new Error(`Damage reset failed: ${JSON.stringify(state)}`);
           if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
           await browser.close();
           NODE
