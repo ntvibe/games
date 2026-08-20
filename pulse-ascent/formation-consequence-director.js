@@ -11,7 +11,7 @@ const REACTIONS=['BUS REROUTE','MIRROR INVERT','ORBIT SCATTER','BRANCH SPLIT','C
 waitFor().then(game=>{
   if(game.__formationConsequenceInstalled)return;game.__formationConsequenceInstalled=true;
 
-  const state={breaks:0,perfectBreaks:0,regroups:0,lastReaction:'',pending:new Map(),shock:new Map(),formationBreaks:new Map()};
+  const state={breaks:0,perfectBreaks:0,commandBreaks:0,commandBonus:0,regroups:0,lastReaction:'',pending:new Map(),shock:new Map(),formationBreaks:new Map()};
   const comfort=()=>!!window.__pulseSettings?.state?.comfort||reducedMotion();
   const direct=()=>!!window.__pulseDirectAscent?.state?.active;
   const areaNow=()=>clamp((window.__pulseCampaign?.state?.selected||1)-1,0,4);
@@ -33,8 +33,9 @@ waitFor().then(game=>{
     const id=enemy?.__formationId;if(!id||enemy.__formationVoice!==0)return;
     const count=state.formationBreaks.get(id)||0;if(count>=2||state.pending.has(id))return;
     const survivors=liveMembers(id);if(survivors.length<2)return;
-    const ctx=enemy.__hitFeedbackCtx||{},a=areaNow();
-    state.pending.set(id,{id,area:a,q:ctx.q??.5,queuedAt:game.audio?.step||0});
+    const ctx=enemy.__hitFeedbackCtx||{},a=areaNow(),size=Math.max(enemy.__formationSize||survivors.length+1,survivors.length+1);
+    const survivorRatio=survivors.length/Math.max(1,size-1),early=survivorRatio>=.6;
+    state.pending.set(id,{id,area:a,q:ctx.q??.5,queuedAt:game.audio?.step||0,early,enemyScore:enemy.score||220,survivorRatio});
     state.formationBreaks.set(id,count+1);state.breaks++;
     window.__pulseFormationCombatState?.markBreak?.(id,a);
   }
@@ -50,10 +51,16 @@ waitFor().then(game=>{
       state.shock.set(enemy,{area:event.area,start:now,duration,index:i,total:ordered.length});
     });
     window.__pulseFormationCombatState?.markRegroup?.(event.id,event.area);
+    window.__pulseFormationLeaderReadability?.refresh?.();
     const perfect=event.q>.88,reaction=REACTIONS[event.area];
-    if(perfect){state.perfectBreaks++;game.score+=420+ordered.length*85;game.sync=clamp(game.sync+3,0,100);game.overdrive=clamp(game.overdrive+5,0,100);game.updateHud?.();}
-    musicalResponse(event.area,perfect);window.__pulseRailCamera?.frameEncounter?.(ordered.slice(0,mobile()?3:5));
-    game.showCallout?.(`${perfect?'PERFECT BREAK':'FORMATION BREAK'} // ${reaction}`,perfect?1:.82);game.haptic?.(perfect?[8,10,14]:(mobile()?5:7));
+    let commandBonus=0;
+    if(event.early){
+      commandBonus=Math.floor(event.enemyScore*.25+ordered.length*30);game.score+=commandBonus;state.commandBreaks++;state.commandBonus+=commandBonus;
+    }
+    if(perfect){state.perfectBreaks++;game.score+=420+ordered.length*85;game.sync=clamp(game.sync+3,0,100);game.overdrive=clamp(game.overdrive+5,0,100);}
+    game.updateHud?.();musicalResponse(event.area,perfect);window.__pulseRailCamera?.frameEncounter?.(ordered.slice(0,mobile()?3:5));
+    const prefix=perfect?'PERFECT BREAK':event.early?'COMMAND BREAK x1.25':'FORMATION BREAK';
+    game.showCallout?.(`${prefix} // ${reaction}`,perfect?1:event.early?.9:.82);game.haptic?.(perfect?[8,10,14]:(mobile()?5:7));
     state.lastReaction=reaction;state.regroups++;
   }
 
@@ -97,6 +104,6 @@ waitFor().then(game=>{
   window.__pulseFormationConsequence={
     processStep,
     forceBreak:id=>{const leader=liveMembers(id).find(e=>e.__formationVoice===0);if(leader){queueBreak(leader);return true;}return false;},
-    stats:()=>({breaks:state.breaks,perfectBreaks:state.perfectBreaks,regroups:state.regroups,lastReaction:state.lastReaction,pending:state.pending.size,reacting:state.shock.size})
+    stats:()=>({breaks:state.breaks,perfectBreaks:state.perfectBreaks,commandBreaks:state.commandBreaks,commandBonus:state.commandBonus,regroups:state.regroups,lastReaction:state.lastReaction,pending:state.pending.size,reacting:state.shock.size})
   };
 });
