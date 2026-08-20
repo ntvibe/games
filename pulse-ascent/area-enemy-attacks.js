@@ -16,7 +16,7 @@ waitFor().then(game=>{
   if(game.__areaEnemyAttacksInstalled)return;
   game.__areaEnemyAttacksInstalled=true;
 
-  const state={inBaseStep:false,patterns:0,spawned:0,suppressedGeneric:0,lastAttack:'',lastArea:1,lastPhase:1};
+  const state={inBaseStep:false,patterns:0,spawned:0,suppressedGeneric:0,suppressedFormation:0,lastAttack:'',lastArea:1,lastPhase:1};
   const mobile=()=>innerWidth<760||matchMedia('(pointer: coarse)').matches;
   const area=()=>clamp((window.__pulseCampaign?.state?.selected||1)-1,0,4);
   const phase=()=>clamp(game.section||0,0,3);
@@ -44,8 +44,11 @@ waitFor().then(game=>{
     game.audio.osc?.(wave,game.audio.midi(root),time,.07,.012,game.audio.fx,0,-.22);
     if(index===4)game.audio.osc?.('triangle',game.audio.midi(root+7),time+.012,.09,.009,game.audio.fx,0,.22);
   }
-  function spawnThreat(source,{targetX,targetY,speed=24,radius=.92,color=0xff5274,delay=0}={}){
+  function spawnThreat(source,options={}){
     if(!source||dangerCount()>=maxDanger())return null;
+    const tuned=window.__pulseFormationCombatState?.adjustThreat?.(source,options)||options;
+    if(tuned.suppressed){state.suppressedFormation++;return null;}
+    const {targetX,targetY,speed=24,radius=.92,color=0xff5274,delay=0}=tuned;
     const launch=()=>{
       if(!game.running||source.dead||dangerCount()>=maxDanger())return null;
       const p=source.group.position.clone();p.z-=1.2;
@@ -53,6 +56,7 @@ waitFor().then(game=>{
       const threat=result||game.enemies[before]||[...game.enemies].reverse().find(e=>e.type==='danger'&&!e.__areaAttackSignature);
       if(!threat)return null;
       threat.__areaAttackSignature=true;
+      threat.__formationAttackState=tuned.formationState||'';
       threat.speed=speed;
       threat.threatImpactRadius=radius;
       if(Number.isFinite(targetX))threat.threatTargetX=targetX;
@@ -88,7 +92,8 @@ waitFor().then(game=>{
     const pool=sources();if(pool.length<1)return false;
     const avatar=game.world.avatar.position,color=AREA_COLORS[1],name=ATTACK_NAMES[1][p];
     const left=sourceBySide(-1,pool),right=sourceBySide(1,pool);
-    // MIRROR CROSSFIRE: paired enemies intentionally cross their aim lanes.
+    // MIRROR CROSSFIRE: paired enemies intentionally cross their aim lanes. A leader
+    // break temporarily desynchronizes this through formation-combat-state.
     for(const [src,sign] of [[left,-1],[right,1]]){
       if(!src)continue;telegraph(src,color);spawnThreat(src,{targetX:avatar.x-sign*(p>=2?.95:.65),targetY:avatar.y+sign*.28,speed:23.5+p*.7,radius:.84,color,delay:sign>0?.045:0});
     }
@@ -123,6 +128,7 @@ waitFor().then(game=>{
     const pool=sources();if(!pool.length)return false;
     const avatar=game.world.avatar.position,color=AREA_COLORS[4],name=ATTACK_NAMES[4][p];
     // SERAPH CHORD: voices fire together on one musical event, with one readable rest lane.
+    // CHORD REVOICE turns surviving formation voices into an arpeggio after a leader break.
     const count=p>=3?(mobile()?3:4):p>=2?3:2,rest=(state.patterns+p)%Math.max(3,count+1),spacing=1.18;
     for(let i=0;i<count+1;i++){
       if(i===rest)continue;
@@ -159,7 +165,7 @@ waitFor().then(game=>{
   window.__pulseAreaEnemyAttacks={
     attacks:ATTACK_NAMES,
     trigger,
-    stats:()=>({area:area()+1,phase:phase()+1,name:ATTACK_NAMES[area()]?.[phase()]||'',patterns:state.patterns,spawned:state.spawned,suppressedGeneric:state.suppressedGeneric,lastAttack:state.lastAttack,danger:dangerCount(),cap:maxDanger()})
+    stats:()=>({area:area()+1,phase:phase()+1,name:ATTACK_NAMES[area()]?.[phase()]||'',patterns:state.patterns,spawned:state.spawned,suppressedGeneric:state.suppressedGeneric,suppressedFormation:state.suppressedFormation,lastAttack:state.lastAttack,danger:dangerCount(),cap:maxDanger()})
   };
 });
 
