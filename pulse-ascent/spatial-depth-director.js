@@ -53,7 +53,8 @@ waitFor().then(game=>{
     const section=clamp(game.section||0,0,4),sync01=clamp((game.sync||0)/100,0,1),energy01=clamp(energy||0,0,1);
     const intensity=running&&railActive?clamp(.32+section*.075+energy01*.28+sync01*.22,0,1):.08;
     state.beat=lerp(state.beat,0,1-Math.pow(.008,dt));state.phrase=lerp(state.phrase,0,1-Math.pow(.025,dt));
-    const speed=SETTINGS.worldSpeed*(1+section*.075+sync01*.16+energy01*.22)*(1+state.beat*.08+state.phrase*.07);
+    const railDrive=clamp(window.__pulseRailCamera?.stats?.().drive??1,.84,1.16);
+    const speed=SETTINGS.worldSpeed*(1+section*.075+sync01*.16+energy01*.22)*(1+state.beat*.08+state.phrase*.07)*railDrive;
     state.lastSpeed=lerp(state.lastSpeed,speed,clamp(dt*4,0,1));
     state.activeSegments=0;
 
