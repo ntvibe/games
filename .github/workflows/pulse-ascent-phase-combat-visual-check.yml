@@ -1,0 +1,79 @@
+name: Pulse Ascent phase combat visual check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/area-combat-grammar.js'
+      - 'pulse-ascent/area-phase-transitions.js'
+      - 'pulse-ascent/index.html'
+      - 'pulse-ascent/service-worker.js'
+      - '.github/workflows/pulse-ascent-phase-combat-visual-check.yml'
+  workflow_dispatch:
+jobs:
+  phase-combat-webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check combat grammar
+        run: node --check --input-type=module < pulse-ascent/area-combat-grammar.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Serve game
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-phase-server.log 2>&1 &
+          sleep 2
+      - name: Exercise phase combat grammar in WebGL
+        run: |
+          cat >/tmp/phase-combat.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-phase-combat';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage();
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>{
+            localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({step:4,completed:true,dismissed:false}));
+            localStorage.setItem('pulse-ascent-campaign-v1',JSON.stringify({selected:2,unlocked:5,completed:{1:{score:1},2:{score:1},3:{score:1},4:{score:1},5:{score:1}}}));
+          });
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.waitForFunction(()=>window.__pulseCampaign&&window.__pulseAreaCombatGrammar,{timeout:12000});
+          window;
+          await page.click('#startBtn');await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
+          const mirror=await page.evaluate(()=>{
+            const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];g.bar=20;g.setSection(2,'MIRROR SANCTUM');
+            for(let i=0;i<6;i++)g.spawnEnemy('drone',new THREE.Vector3((i-2.5)*1.7,(i%2?1:-1)*1.2,-28-i*2));
+            return window.__pulseAreaCombatGrammar.stats();
+          }).catch(async()=>page.evaluate(()=>{
+            const g=window.__pulseAscent;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];g.bar=20;g.setSection(2,'MIRROR SANCTUM');
+            const V=g.camera.position.constructor;for(let i=0;i<6;i++)g.spawnEnemy('drone',new V((i-2.5)*1.7,(i%2?1:-1)*1.2,-28-i*2));return window.__pulseAreaCombatGrammar.stats();
+          }));
+          await page.waitForTimeout(900);
+          const mirrorState=await page.evaluate(()=>({stats:window.__pulseAreaCombatGrammar.stats(),xs:window.__pulseAscent.enemies.filter(e=>!e.dead&&e.type!=='danger').map(e=>e.group.position.x),bound:window.__pulseAscent.enemies.filter(e=>e.__areaCombatGrammar&&!e.dead).length}));
+          if(mirrorState.stats.name!=='MIRROR PAIRS'||mirrorState.bound<4||mirrorState.xs.some(x=>Math.abs(x)>8.8))throw new Error(`Mirror grammar invalid: ${JSON.stringify(mirrorState)}`);
+          await page.screenshot({path:`${out}/01-mirror-sanctum-mobile.png`});
+          const branch=await page.evaluate(()=>{const g=window.__pulseAscent;window.__pulseCampaign.state.selected=4;g.setSection(2,'BRANCH MAZE');g.bar=24;return window.__pulseAreaCombatGrammar.stats();});
+          if(branch.name!=='BRANCH MAZE'||branch.area!==4||branch.phase!==3)throw new Error(`Branch grammar invalid: ${JSON.stringify(branch)}`);
+          await page.waitForTimeout(500);await page.screenshot({path:`${out}/02-branch-maze-mobile.png`});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({mirror,mirrorState,branch,errors},null,2));
+          if(errors.length)throw new Error(errors.join('\n'));
+          await browser.close();
+          NODE
+          # Inject Three-free fallback path by relying on the game's camera Vector3 constructor.
+          node /tmp/phase-combat.mjs
+      - name: Upload phase combat evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-phase-combat
+          path: pulse-phase-combat/
+          if-no-files-found: warn
+          retention-days: 7
