@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import './boss-damage-staging.js';
 
 const ROOT='./assets/models/cc0/';
 const FILES={machine:'factory-machine.glb',pipe:'factory-pipe.glb',conveyor:'factory-conveyor.glb',tank:'factory-tank.glb',rifle:'blaster-rifle.glb',crate:'blaster-crate.glb'};
