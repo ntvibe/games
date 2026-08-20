@@ -1,0 +1,37 @@
+name: Pulse Ascent phase identity check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/level-campaign.js'
+      - 'pulse-ascent/area-phase-transitions.js'
+      - 'pulse-ascent/index.html'
+      - 'pulse-ascent/service-worker.js'
+      - '.github/workflows/pulse-ascent-phase-identity-check.yml'
+  workflow_dispatch:
+jobs:
+  phase-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check phase systems
+        run: |
+          node --check --input-type=module < pulse-ascent/level-campaign.js
+          node --check --input-type=module < pulse-ascent/area-phase-transitions.js
+      - name: Verify distinct campaign phase identities
+        run: |
+          grep -q "REFRACTION CLOISTER" pulse-ascent/level-campaign.js
+          grep -q "MIRROR SANCTUM" pulse-ascent/level-campaign.js
+          grep -q "TIDAL LATTICE" pulse-ascent/level-campaign.js
+          grep -q "COLOR ABYSS" pulse-ascent/level-campaign.js
+          grep -q "SYNAPSE GROVE" pulse-ascent/level-campaign.js
+          grep -q "BRANCH MAZE" pulse-ascent/level-campaign.js
+          grep -q "CHOIR VAULT" pulse-ascent/level-campaign.js
+          grep -q "SERAPH NAVE" pulse-ascent/level-campaign.js
+          grep -q "PHASE_ACCENTS" pulse-ascent/area-phase-transitions.js
+          grep -q "__pulseAreaPhaseTransitions" pulse-ascent/area-phase-transitions.js
+          grep -q "area-phase-transitions.js" pulse-ascent/index.html
+          grep -q "area-phase-transitions.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v29" pulse-ascent/service-worker.js
