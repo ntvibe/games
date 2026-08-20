@@ -4,6 +4,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mobile=()=>innerWidth<760||matchMedia('(pointer: coarse)').matches;
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||!!window.__pulseSettings?.state?.comfort;
 const waitFor=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent&&window.__pulseModelFusion&&window.__pulseEnemyDamageReactivity?resolve(window.__pulseAscent):requestAnimationFrame(tick);tick();});
+const AREA_MOTION_NAMES=['GRID PULSE','MIRROR BREATH','HELIX ORBIT','BRANCH FLEX','CHOIR PHASE'];
 
 waitFor().then(game=>{
   if(game.__enemyMotionRigsInstalled)return;game.__enemyMotionRigsInstalled=true;
@@ -15,7 +16,8 @@ waitFor().then(game=>{
     if(!enemy||enemy.dead||enemy.type==='danger'||enemy.type==='rupture'||enemy.__motionRig||!enemy.__fusionModel||!enemy.__damageReactiveState)return enemy;
     const model=enemy.__fusionModel,modules=model.children.filter(c=>c.name==='rez-volume-model');
     if(modules.length<2)return enemy;
-    const state={modules,phase:(enemy.phase||0)+(styled%11)*.47,activity:0,lock:0};
+    const area=clamp(model.userData.areaIndex??0,0,4);
+    const state={modules,phase:(enemy.phase||0)+(styled%11)*.47,activity:0,lock:0,area,areaMotion:AREA_MOTION_NAMES[area]};
     enemy.__motionRig=state;tracked.add(enemy);styled++;
 
     const baseUpdate=enemy.update?.bind(enemy);
@@ -25,6 +27,7 @@ waitFor().then(game=>{
       state.lock=THREE.MathUtils.lerp(state.lock,enemy.locked?1:0,clamp(dt*9,0,1));state.activity=THREE.MathUtils.lerp(state.activity,pulse,clamp(dt*7,0,1));
       const q=(state.activity*.06+state.lock*.045)*motion,phase=t+state.phase;
 
+      // Family motion keeps type readable in every Area.
       if(enemy.type==='tank'){
         // Heavy braced motion: side modules compress like pistons while the weapon assembly kicks on downbeats.
         modules.forEach((m,i)=>{const side=i%2?1:-1;m.position.y+=Math.sin(phase*1.25+i)*.012*motion;m.position.x+=side*q*.18;m.rotation.x+=Math.sin(phase*.8+i)*.012*motion;m.rotation.z+=side*state.activity*.028*motion;});
@@ -50,6 +53,29 @@ waitFor().then(game=>{
         model.rotation.z+=Math.sin(phase*1.4)*.012*motion;
       }
 
+      // Area motion is a second, low-amplitude layer. It uses the silhouette roles assigned by
+      // enemy-area-variants.js so Area identity is readable even with the HUD hidden.
+      if(state.area===0){
+        // SIGNAL GRID: orthogonal machine pulses, like synchronized buses stepping on a clock edge.
+        modules.forEach((m,i)=>{const role=m.userData.variantRole,side=i%2?1:-1,step=Math.sin(phase*2.4+i*.8);if(role==='bus'){m.position.x+=side*step*.012*motion;m.position.y+=state.activity*.009*motion;m.rotation.y+=side*state.activity*.018*motion;}else m.position.y-=state.activity*.008*motion;});
+      }else if(state.area===1){
+        // GLASS TEMPLE: mirrored wings inhale symmetrically, then snap toward alignment on strong beats.
+        const breath=(.018+.028*(.5+.5*Math.sin(phase*.95))+.026*state.activity)*motion;
+        modules.forEach((m,i)=>{const role=m.userData.variantRole,side=i%2?1:-1;if(role==='mirror-wing'){m.position.x+=side*breath;m.rotation.z+=side*(breath*.85+state.lock*.018*motion);m.rotation.y-=side*state.activity*.022*motion;}else if(role==='spire'){m.position.y+=state.activity*.012*motion;}});
+      }else if(state.area===2){
+        // CHROMA SEA: the whole assembly continuously corkscrews through depth instead of hinging in a plane.
+        const n=Math.max(1,modules.length),orbit=.018*motion*(1+state.lock*.35);
+        modules.forEach((m,i)=>{const a=phase*(.7+.05*i)+i/n*Math.PI*2;m.position.x+=Math.cos(a)*orbit;m.position.y+=Math.sin(a)*orbit;m.position.z+=Math.sin(a+.9)*orbit*1.4;m.rotation.x+=Math.cos(a)*.014*motion;m.rotation.y+=Math.sin(a)*.018*motion;});
+        model.rotation.z+=dt*.035*motion;
+      }else if(state.area===3){
+        // ORGANIC CODE: branches flex asynchronously and never quite mirror each other.
+        modules.forEach((m,i)=>{const role=m.userData.variantRole,side=i%2?1:-1,flex=Math.sin(phase*(1.12+i*.17)+i*1.37)*(.012+.004*(i%3))*motion;if(role==='branch'){m.position.x+=side*flex*1.7;m.position.y+=Math.abs(flex)*.55;m.rotation.z+=side*flex*1.9;m.rotation.x-=flex*.8;}else if(role==='seed'){m.position.y+=Math.sin(phase*.72)*.008*motion;}});
+      }else{
+        // NEURAL CATHEDRAL: choir pods pulse in discrete voices while the central lancet remains solemn and stable.
+        const voice=Math.floor(((game.audio?.ctx?.currentTime||t)/beatDur)*4)%4;
+        modules.forEach((m,i)=>{const role=m.userData.variantRole,side=i%2?1:-1;if(role==='choir-pod'){const active=(i%4)===voice?1:.18;m.position.y+=active*state.activity*.018*motion;m.position.x+=side*active*.006*motion;m.rotation.z+=side*active*state.activity*.022*motion;}else if(role==='lancet'){m.position.y+=state.activity*.01*motion;m.rotation.y+=Math.sin(phase*.35)*.004*motion;}});
+      }
+
       const damage=1-clamp((enemy.hp||0)/enemy.__damageReactiveState.initialHp,0,1);
       if(damage>.01){
         // Damaged bodies lose coordination without fighting the structural-damage layer underneath.
@@ -67,6 +93,6 @@ waitFor().then(game=>{
 
   window.__pulseEnemyMotionRigs={
     style,
-    stats:()=>({tracked:tracked.size,totalStyled:styled,mobile:mobile(),families:[...new Set([...tracked].map(e=>e.type))].sort()})
+    stats:()=>({tracked:tracked.size,totalStyled:styled,mobile:mobile(),families:[...new Set([...tracked].map(e=>e.type))].sort(),areaMotions:[...new Set([...tracked].map(e=>e.__motionRig?.areaMotion).filter(Boolean))].sort()})
   };
 });
