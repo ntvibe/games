@@ -1,0 +1,90 @@
+name: Pulse Ascent boss instability
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-boss-instability-check.yml'
+  workflow_dispatch:
+jobs:
+  boss-instability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/boss-consequences.js
+          grep -q "ROLE_FOR_TAG" pulse-ascent/boss-consequences.js
+          grep -q "BOSS SIGNAL MISFIRE" pulse-ascent/boss-consequences.js
+          grep -q "instabilityTone" pulse-ascent/boss-consequences.js
+          grep -q "NormalBlending" pulse-ascent/boss-consequences.js
+          grep -q "pulse-ascent-v36" pulse-ascent/service-worker.js
+          grep -q "boss-consequences.js" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise damaged boss consequences
+        run: |
+          cat >/tmp/boss-instability.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='boss-instability-evidence';fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({complete:true,step:5})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
+          await page.waitForFunction(()=>window.__pulseBossConsequences&&window.__pulseBossDamageStaging&&window.__pulseDirector,{timeout:16000});
+          await page.evaluate(async()=>{
+            const g=window.__pulseAscent;for(const e of [...g.enemies])e.dispose?.();g.enemies=[];
+            const {Boss}=await import('/pulse-ascent/entities.js');
+            const b=new Boss(g);b.group.position.set(0,0,-13);g.boss=b;
+            window.__pulseBossVulnerability?.patchBoss?.(b);window.__pulseBossTopology?.patchBoss?.(b);window.__pulseBossDamageStaging?.patchBoss?.(b);
+            await new Promise(r=>setTimeout(r,220));
+            b.parts.forEach((p,i)=>p.role=['EMITTER','RESONATOR','GATE','RESONATOR','EMITTER','RESONATOR','GATE','RESONATOR'][i]);
+            for(const i of [0,4]){b.parts[i].hp=0;b.parts[i].dead=true;b.parts[i].pivot.visible=false;window.__pulseBossDamageStaging?.breach?.(b,i);}
+            b.hp=38;b.phase=3;
+            await new Promise(r=>setTimeout(r,220));
+          });
+          const before=await page.evaluate(()=>window.__pulseBossConsequences.stats());
+          const fired=await page.evaluate(()=>{
+            const g=window.__pulseAscent,d=window.__pulseDirector,results=[];
+            for(let i=0;i<4;i++)results.push(!!d.spawnThreat(g,{x:-4+i*2,y:0,z:-28,targetX:0,targetY:0,phase:3,accent:0xff315f,tag:'twin-cut'}));
+            return results;
+          });
+          await page.waitForTimeout(180);
+          const after=await page.evaluate(()=>window.__pulseBossConsequences.stats());
+          if(!after.patched||!after.normal)throw new Error(`Boss consequences not active/readable: ${JSON.stringify(after)}`);
+          if(after.stability>=.55)throw new Error(`Damaged boss stability remained too high: ${JSON.stringify(after)}`);
+          if((after.roleSuppressed?.EMITTER||0)<1)throw new Error(`Emitter damage did not suppress Twin Cut: ${JSON.stringify({before,after,fired})}`);
+          if(fired.filter(Boolean).length>=4)throw new Error(`No deterministic attack misfire observed: ${JSON.stringify(fired)}`);
+          await page.screenshot({path:`${out}/01-boss-unstable-mobile.png`});
+          if(errors.length)throw new Error(errors.join('\n'));
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({before,after,fired,errors},null,2));
+          await browser.close();
+          NODE
+          node /tmp/boss-instability.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-boss-instability
+          path: boss-instability-evidence/
+          if-no-files-found: warn
+          retention-days: 7
