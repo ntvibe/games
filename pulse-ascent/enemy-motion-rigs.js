@@ -10,7 +10,9 @@ waitFor().then(game=>{
   const tracked=new Set();let styled=0;
 
   const style=enemy=>{
-    if(!enemy||enemy.dead||enemy.type==='danger'||enemy.type==='rupture'||enemy.__motionRig||!enemy.__fusionModel)return enemy;
+    // Wait until damage-reactivity has wrapped the enemy update first. Articulation then layers
+    // on top of its stable structural offsets instead of being overwritten by them.
+    if(!enemy||enemy.dead||enemy.type==='danger'||enemy.type==='rupture'||enemy.__motionRig||!enemy.__fusionModel||!enemy.__damageReactiveState)return enemy;
     const model=enemy.__fusionModel,modules=model.children.filter(c=>c.name==='rez-volume-model');
     if(modules.length<2)return enemy;
     const state={modules,phase:(enemy.phase||0)+(styled%11)*.47,activity:0,lock:0};
@@ -19,7 +21,7 @@ waitFor().then(game=>{
     const baseUpdate=enemy.update?.bind(enemy);
     if(baseUpdate)enemy.update=(dt,t)=>{
       baseUpdate(dt,t);if(enemy.dead||!enemy.__fusionModel||enemy.__damageReactiveState?.released)return;
-      const comfort=reduced(),motion=comfort?.38:1,beatDur=game.audio?.beatDur||.46875,beat=((game.audio?.ctx?.currentTime||t)/beatDur)%1,pulse=Math.pow(Math.max(0,Math.cos(beat*Math.PI*2)),10);
+      const comfort=reduced(),motion=comfort ? .38 : 1,beatDur=game.audio?.beatDur||.46875,beat=((game.audio?.ctx?.currentTime||t)/beatDur)%1,pulse=Math.pow(Math.max(0,Math.cos(beat*Math.PI*2)),10);
       state.lock=THREE.MathUtils.lerp(state.lock,enemy.locked?1:0,clamp(dt*9,0,1));state.activity=THREE.MathUtils.lerp(state.activity,pulse,clamp(dt*7,0,1));
       const q=(state.activity*.06+state.lock*.045)*motion,phase=t+state.phase;
 
@@ -48,7 +50,7 @@ waitFor().then(game=>{
         model.rotation.z+=Math.sin(phase*1.4)*.012*motion;
       }
 
-      const damage=enemy.__damageReactiveState?1-clamp((enemy.hp||0)/enemy.__damageReactiveState.initialHp,0,1):0;
+      const damage=1-clamp((enemy.hp||0)/enemy.__damageReactiveState.initialHp,0,1);
       if(damage>.01){
         // Damaged bodies lose coordination without fighting the structural-damage layer underneath.
         modules.forEach((m,i)=>{const wob=Math.sin(phase*(2.2+i*.09)+i)*damage*.014*motion;m.rotation.x+=wob;m.rotation.y-=wob*.65;});
