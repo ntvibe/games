@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './formation-combat-state.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mobile=()=>innerWidth<760||innerHeight<520||matchMedia('(pointer: coarse)').matches;
@@ -35,6 +36,7 @@ waitFor().then(game=>{
     const ctx=enemy.__hitFeedbackCtx||{},a=areaNow();
     state.pending.set(id,{id,area:a,q:ctx.q??.5,queuedAt:game.audio?.step||0});
     state.formationBreaks.set(id,count+1);state.breaks++;
+    window.__pulseFormationCombatState?.markBreak?.(id,a);
   }
 
   function regroup(event){
@@ -47,6 +49,7 @@ waitFor().then(game=>{
       enemy.__formationSuccessor=i===0;
       state.shock.set(enemy,{area:event.area,start:now,duration,index:i,total:ordered.length});
     });
+    window.__pulseFormationCombatState?.markRegroup?.(event.id,event.area);
     const perfect=event.q>.88,reaction=REACTIONS[event.area];
     if(perfect){state.perfectBreaks++;game.score+=420+ordered.length*85;game.sync=clamp(game.sync+3,0,100);game.overdrive=clamp(game.overdrive+5,0,100);game.updateHud?.();}
     musicalResponse(event.area,perfect);window.__pulseRailCamera?.frameEncounter?.(ordered.slice(0,mobile()?3:5));
