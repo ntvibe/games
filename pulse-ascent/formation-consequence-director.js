@@ -25,8 +25,8 @@ waitFor().then(game=>{
   function musicalResponse(a,perfect=false){
     const audio=game.audio,t=audio?.ctx?.currentTime;if(t===undefined||!audio?.osc)return;
     const root=(audio.rootMidi||43)+[24,29,31,27,36][a],notes=[[0,7,12],[0,5,12],[0,3,10],[0,5,9],[0,6,10]][a];
-    const type=['square','sine','triangle','sawtooth','triangle'][a];
-    notes.forEach((n,i)=>audio.osc(type,audio.midi(root+n),t+i*.018,.09+i*.025,(perfect?.014:.009)*(1-i*.12),audio.fx,(i-1)*3,(i-1)*.32));
+    const type=['square','sine','triangle','sawtooth','triangle'][a],gain=perfect ? .014 : .009;
+    notes.forEach((n,i)=>audio.osc(type,audio.midi(root+n),t+i*.018,.09+i*.025,gain*(1-i*.12),audio.fx,(i-1)*3,(i-1)*.32));
   }
 
   function queueBreak(enemy){
@@ -44,7 +44,7 @@ waitFor().then(game=>{
     const survivors=liveMembers(event.id);if(survivors.length<2)return;
     const successor=[...survivors].sort((a,b)=>scoreLeader(b)-scoreLeader(a))[0];
     const ordered=[successor,...survivors.filter(e=>e!==successor).sort((a,b)=>(a.__formationVoice||9)-(b.__formationVoice||9))];
-    const duration=direct()?620:(comfort()?720:980),now=performance.now();
+    const duration=direct() ? 620 : (comfort() ? 720 : 980),now=performance.now();
     ordered.forEach((enemy,i)=>{
       enemy.__formationVoice=i===0?0:1+((i-1)%Math.max(2,Math.min(4,ordered.length-1)));
       enemy.__formationSuccessor=i===0;
@@ -59,8 +59,8 @@ waitFor().then(game=>{
     }
     if(perfect){state.perfectBreaks++;game.score+=420+ordered.length*85;game.sync=clamp(game.sync+3,0,100);game.overdrive=clamp(game.overdrive+5,0,100);}
     game.updateHud?.();musicalResponse(event.area,perfect);window.__pulseRailCamera?.frameEncounter?.(ordered.slice(0,mobile()?3:5));
-    const prefix=perfect?'PERFECT BREAK':event.early?'COMMAND BREAK x1.25':'FORMATION BREAK';
-    game.showCallout?.(`${prefix} // ${reaction}`,perfect?1:event.early?.9:.82);game.haptic?.(perfect?[8,10,14]:(mobile()?5:7));
+    const prefix=perfect?'PERFECT BREAK':event.early?'COMMAND BREAK x1.25':'FORMATION BREAK',weight=perfect ? 1 : (event.early ? .9 : .82);
+    game.showCallout?.(`${prefix} // ${reaction}`,weight);game.haptic?.(perfect?[8,10,14]:(mobile()?5:7));
     state.lastReaction=reaction;state.regroups++;
   }
 
@@ -84,7 +84,7 @@ waitFor().then(game=>{
     for(const [enemy,s] of [...state.shock]){
       if(!enemy||enemy.dead||!enemy.group){state.shock.delete(enemy);continue;}
       const k=clamp((now-s.start)/s.duration,0,1);if(k>=1){state.shock.delete(enemy);delete enemy.__formationSuccessor;continue;}
-      const env=Math.sin(k*Math.PI)*(1-k*.18)*(comfort()?.55:1),p=enemy.group.position,i=s.index,n=Math.max(2,s.total);
+      const comfortScale=comfort() ? .55 : 1,env=Math.sin(k*Math.PI)*(1-k*.18)*comfortScale,p=enemy.group.position,i=s.index,n=Math.max(2,s.total);
       if(s.area===0){
         const dir=Math.sign(p.x)||((i%2)?1:-1);p.x+=dir*(.18+i*.035)*env;p.y+=(i-(n-1)/2)*.018*env;
       }else if(s.area===1){
