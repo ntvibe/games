@@ -1,0 +1,79 @@
+name: Pulse Ascent score mastery check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-score-mastery-check.yml'
+  workflow_dispatch:
+jobs:
+  score-mastery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check score mastery integration
+        run: |
+          node --check --input-type=module < pulse-ascent/score-mastery-feedback.js
+          node --check --input-type=module < pulse-ascent/formation-consequence-director.js
+          node --check --input-type=module < pulse-ascent/weapon-rhythm-mastery.js
+          grep -q "score-mastery-feedback.js" pulse-ascent/index.html
+          grep -q "pulse:skill-reward" pulse-ascent/formation-consequence-director.js
+          grep -q "LANCE RESONANCE" pulse-ascent/weapon-rhythm-mastery.js
+          grep -q "score-mastery-feedback.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v45" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-score-mastery-server.log 2>&1 &
+          sleep 2
+      - name: Exercise unified reward HUD
+        run: |
+          cat > /tmp/score-mastery.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-score-mastery';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844}});
+          const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseScoreMasteryFeedback,{timeout:15000});
+          await page.evaluate(()=>{const g=window.__pulseAscent;clearInterval(g.audio.timer);g.audio.timer=0;g.mult=3.42;g.scoreTiming(1,8);});
+          await page.waitForTimeout(120);
+          let state=await page.evaluate(()=>({stats:window.__pulseScoreMasteryFeedback.stats(),flow:document.querySelector('#mfFlow')?.textContent,skill:document.querySelector('#mfSkill')?.textContent,rows:[...document.querySelectorAll('.mf-reward')].map(e=>e.textContent)}));
+          if(state.stats.skillChain!==1||state.flow!=='x3.42'||state.skill!=='1'||!state.rows.some(x=>x.includes('PERFECT OCTAVE')))throw new Error(`Perfect feedback failed: ${JSON.stringify(state)}`);
+          await page.screenshot({path:`${out}/01-perfect-flow-mobile.png`});
+
+          await page.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:skill-reward',{detail:{label:'COMMAND BREAK',points:840,quality:.9,kind:'command'}})));
+          await page.evaluate(()=>window.dispatchEvent(new CustomEvent('pulse:traversal-gate',{detail:{success:true,risk:true,award:1200,quality:.94}})));
+          await page.waitForTimeout(100);
+          state=await page.evaluate(()=>({stats:window.__pulseScoreMasteryFeedback.stats(),skill:document.querySelector('#mfSkill')?.textContent,rows:[...document.querySelectorAll('.mf-reward')].map(e=>e.textContent)}));
+          if(state.stats.skillChain!==3||state.skill!=='3'||!state.rows.some(x=>x.includes('COMMAND BREAK'))||!state.rows.some(x=>x.includes('OVERDRIVE GATE')))throw new Error(`Skill chain failed: ${JSON.stringify(state)}`);
+          await page.screenshot({path:`${out}/02-skill-chain-mobile.png`});
+
+          await page.evaluate(()=>window.__pulseAscent.takeHit());
+          await page.waitForTimeout(80);
+          state=await page.evaluate(()=>window.__pulseScoreMasteryFeedback.stats());
+          if(state.skillChain!==0)throw new Error(`Skill reset failed: ${JSON.stringify(state)}`);
+          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);
+          await browser.close();
+          NODE
+          node /tmp/score-mastery.mjs
+      - name: Upload score mastery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-score-mastery
+          path: pulse-ascent-score-mastery
+          if-no-files-found: warn
