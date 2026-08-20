@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {applyAreaVariant} from './enemy-area-variants.js';
 import './boss-damage-staging.js';
 import './boss-failure-animation.js';
 import './enemy-motion-rigs.js';
@@ -46,7 +47,7 @@ function cloneTinted(template,primary,secondary,size=1){
   return obj;
 }
 
-function assembleType(type,templates,primary,secondary){
+function assembleType(type,templates,primary,secondary,areaIndex=0){
   const root=new THREE.Group();root.name='fusion-enemy-model';
   const add=(key,size,pos=[0,0,0],rot=[0,0,0])=>{const t=templates.get(key);if(!t)return;const o=cloneTinted(t,primary,secondary,size);o.position.set(...pos);o.rotation.set(...rot);root.add(o);};
   if(type==='tank'){
@@ -60,6 +61,7 @@ function assembleType(type,templates,primary,secondary){
   }else{
     add('crate',.55,[0,0,.05],[0,Math.PI/4,0]);add('rifle',.42,[.28,0,-.08],[0,.18,.55]);add('rifle',.42,[-.28,0,-.08],[0,-.18,-.55]);
   }
+  applyAreaVariant(root,type,areaIndex);
   normalize(root,TYPE_SCALE[type]||TYPE_SCALE.drone);return root;
 }
 
@@ -92,8 +94,8 @@ waitFor().then(async game=>{
   };
   const styleEnemy=enemy=>{
     if(!shouldStyle(enemy)||templates.size<3)return enemy;
-    const [primary,secondary]=AREA_COLORS[area()]||AREA_COLORS[0],model=assembleType(enemy.type,templates,primary,secondary);
-    model.rotation.set(.08,-.12,0);model.scale.setScalar(.08);enemy.group.add(model);enemy.__fusionModel=model;styled++;
+    const areaIndex=area(),[primary,secondary]=AREA_COLORS[areaIndex]||AREA_COLORS[0],model=assembleType(enemy.type,templates,primary,secondary,areaIndex);
+    model.rotation.set(.08,-.12,0);model.scale.setScalar(.08);enemy.group.add(model);enemy.__fusionModel=model;enemy.__fusionVariant=model.userData.areaVariant;styled++;
     if(enemy.mesh?.material){enemy.mesh.material.opacity=.025;enemy.mesh.material.depthWrite=false;}
     if(enemy.halo?.material)enemy.halo.material.opacity=Math.min(enemy.halo.material.opacity,.05);
     const baseUpdate=enemy.update?.bind(enemy);
@@ -136,6 +138,9 @@ waitFor().then(async game=>{
 
   window.__pulseModelFusion={
     get ready(){return templates.size>=3;},errors,templates:[...templates.keys()],styleEnemy,
-    stats:()=>({ready:templates.size>=3,templates:templates.size,styled:game.enemies.filter(e=>e.__fusionModel&&!e.dead).length,boss:!!bossShell,mobile:mobile()})
+    stats:()=>{
+      const active=game.enemies.filter(e=>e.__fusionModel&&!e.dead),variants={};active.forEach(e=>{const key=e.__fusionVariant||'UNSET';variants[key]=(variants[key]||0)+1;});
+      return{ready:templates.size>=3,templates:templates.size,styled:active.length,boss:!!bossShell,mobile:mobile(),variants};
+    }
   };
 });
