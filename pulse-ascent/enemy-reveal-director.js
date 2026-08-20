@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './formation-reveal-director.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const smooth=x=>x*x*(3-2*x);
