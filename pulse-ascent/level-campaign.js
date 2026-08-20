@@ -2,11 +2,11 @@ const waitForGame=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent?
 
 const STORAGE='pulse-ascent-campaign-v1';
 const LEVELS=[
-  {id:1,name:'AREA 01 // SIGNAL BIRTH',theme:'CIRCUIT CITY',bars:36,boss:'THE CONVERGENCE',unlock:1},
-  {id:2,name:'AREA 02 // GLASS TEMPLE',theme:'DATA TEMPLE',bars:40,boss:'THE ARCHON',unlock:2},
-  {id:3,name:'AREA 03 // CHROMA SEA',theme:'CHROMATIC VOID',bars:44,boss:'THE BLOOM',unlock:3},
-  {id:4,name:'AREA 04 // ORGANIC CODE',theme:'ORGANIC SIGNAL',bars:48,boss:'THE ORACLE',unlock:4},
-  {id:5,name:'AREA 05 // NEURAL CATHEDRAL',theme:'NEURAL CATHEDRAL',bars:52,boss:'FINAL RESONANCE',unlock:5}
+  {id:1,name:'AREA 01 // SIGNAL BIRTH',theme:'CIRCUIT CITY',bars:36,boss:'THE CONVERGENCE',unlock:1,phases:['CIRCUIT CITY','SIGNAL BLOOM','VECTOR TEMPLE','ASCENSION','THE CONVERGENCE']},
+  {id:2,name:'AREA 02 // GLASS TEMPLE',theme:'DATA TEMPLE',bars:40,boss:'THE ARCHON',unlock:2,phases:['DATA TEMPLE','REFRACTION CLOISTER','MIRROR SANCTUM','ARCHON ASCENT','THE ARCHON']},
+  {id:3,name:'AREA 03 // CHROMA SEA',theme:'CHROMATIC VOID',bars:44,boss:'THE BLOOM',unlock:3,phases:['CHROMATIC VOID','TIDAL LATTICE','COLOR ABYSS','BLOOM CURRENT','THE BLOOM']},
+  {id:4,name:'AREA 04 // ORGANIC CODE',theme:'ORGANIC SIGNAL',bars:48,boss:'THE ORACLE',unlock:4,phases:['ORGANIC SIGNAL','SYNAPSE GROVE','BRANCH MAZE','ORACLE ROOT','THE ORACLE']},
+  {id:5,name:'AREA 05 // NEURAL CATHEDRAL',theme:'NEURAL CATHEDRAL',bars:52,boss:'FINAL RESONANCE',unlock:5,phases:['NEURAL CATHEDRAL','CHOIR VAULT','ROSE WINDOW','SERAPH NAVE','FINAL RESONANCE']}
 ];
 
 const load=()=>{try{return JSON.parse(localStorage.getItem(STORAGE)||'{}')}catch{return {}}};
@@ -47,10 +47,10 @@ waitForGame().then(game=>{
     const restartBtn=document.querySelector('#restartBtn');if(restartBtn&&!restartBtn.__campaignBound){restartBtn.__campaignBound=true;restartBtn.addEventListener('click',()=>{if(l.id<LEVELS.length){state.selected=Math.min(LEVELS.length,l.id+1);save({selected:state.selected,unlocked:state.unlocked,completed:state.completed});state.render?.();}},true)};
   };
 
-  // Each campaign Area remaps the existing five-section visual arc so subsequent Areas feel like distinct journeys
-  // while retaining the same tested combat/boss substrate for now. This is the migration path toward fully authored Areas 2-5.
+  // Every campaign Area owns its full five-phase identity rather than inheriting Area 01's middle acts.
+  // The underlying combat substrate stays shared while authored openings, setpieces, topology and audio provide the Area-specific journey.
   const originalSetSection=game.setSection.bind(game);
-  game.setSection=(i,name)=>{const l=LEVELS[state.selected-1];const names=[l.theme,'SIGNAL BLOOM','VECTOR TEMPLE','ASCENSION',l.boss];originalSetSection(i,names[i]||name);if(window.__worldMetamorphosis&&i===0)window.__worldMetamorphosis.trigger?.();};
+  game.setSection=(i,name)=>{const l=LEVELS[state.selected-1],phase=l.phases?.[i]||name;originalSetSection(i,phase);if(window.__worldMetamorphosis&&i===0)window.__worldMetamorphosis.trigger?.();};
 
   window.__pulseCampaign={state,levels:LEVELS,select:id=>{if(id>=1&&id<=state.unlocked){state.selected=id;save({selected:id,unlocked:state.unlocked,completed:state.completed});state.render?.();return true}return false}};
 });
