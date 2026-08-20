@@ -1,0 +1,79 @@
+name: Pulse Ascent spatial depth check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-spatial-depth-check.yml'
+  workflow_dispatch:
+jobs:
+  spatial-depth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/spatial-depth-director.js
+          grep -q "spatial-depth-director.js" pulse-ascent/index.html
+          grep -q "spatial-depth-director.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v38" pulse-ascent/service-worker.js
+          grep -q "depth-near-flybys" pulse-ascent/spatial-depth-director.js
+          grep -q "NormalBlending" pulse-ascent/spatial-depth-director.js
+          grep -q "lastFovOffset" pulse-ascent/spatial-depth-director.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise mobile depth and speed hierarchy
+        run: |
+          cat >/tmp/spatial-depth.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='spatial-depth-evidence';fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({complete:true,step:5})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
+          await page.waitForFunction(()=>window.__pulseSpatialDepth&&window.__pulsePerformanceDirector,{timeout:15000});
+          await page.evaluate(()=>{
+            const g=window.__pulseAscent;g.section=3;g.sync=92;g.audio.energy=.92;
+            window.__pulsePerformanceDirector.forceTier(0);
+          });
+          await page.waitForTimeout(1200);
+          const full=await page.evaluate(()=>({depth:window.__pulseSpatialDepth.stats(),fov:window.__pulseAscent.camera.fov,perf:window.__pulsePerformanceDirector.stats()}));
+          if(!full.depth.normalBlending||full.depth.segments<35||full.depth.fovOffset<1||full.depth.speed<=0)throw new Error(`Full depth hierarchy invalid: ${JSON.stringify(full)}`);
+          await page.screenshot({path:`${out}/01-full-depth-mobile.png`});
+          await page.evaluate(()=>window.__pulsePerformanceDirector.forceTier(2));
+          await page.waitForTimeout(350);
+          const lean=await page.evaluate(()=>({depth:window.__pulseSpatialDepth.stats(),perf:window.__pulsePerformanceDirector.stats()}));
+          if(lean.perf.tier!==2||lean.depth.segments>=full.depth.segments)throw new Error(`Lean depth budget invalid: ${JSON.stringify({full,lean})}`);
+          await page.screenshot({path:`${out}/02-lean-depth-mobile.png`});
+          if(errors.length)throw new Error(errors.join('\n'));
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({full,lean,errors},null,2));
+          await browser.close();
+          NODE
+          node /tmp/spatial-depth.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-spatial-depth
+          path: spatial-depth-evidence/
+          if-no-files-found: warn
+          retention-days: 7
