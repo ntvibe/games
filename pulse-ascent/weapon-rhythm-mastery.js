@@ -44,6 +44,7 @@ waitFor().then(game=>{
       if(charge>.84&&timing>.88){
         state.perfects++;game.sync=clamp((game.sync||0)+4,0,100);game.overdrive=clamp((game.overdrive||0)+5,0,100);
         game.showCallout?.('LANCE RESONANCE // PERFECT CHARGE',1);game.haptic?.([10,12,26]);
+        window.dispatchEvent(new CustomEvent('pulse:skill-reward',{detail:{label:'LANCE RESONANCE',points:0,quality:1,kind:'weapon'}}));
       }else if(charge>.72)game.showCallout?.('LANCE CHARGED',.82);
     }
     return baseRelease();
