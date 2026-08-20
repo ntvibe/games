@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import './formation-consequence-director.js';
+import './formation-leader-readability.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mobile=()=>innerWidth<760||innerHeight<520||matchMedia('(pointer: coarse)').matches;
@@ -40,7 +41,7 @@ waitFor().then(game=>{
   function releaseToNormal(enemy){
     const r=enemy?.__revealState;if(!r||r.activated)return;
     if(enemy.__formationOriginalHold!==undefined)r.minHold=enemy.__formationOriginalHold;
-    delete enemy.__formationId;delete enemy.__formationVoice;delete enemy.__formationOriginalHold;
+    delete enemy.__formationId;delete enemy.__formationVoice;delete enemy.__formationOriginalHold;delete enemy.__formationSize;
   }
 
   function finalize(batch){
@@ -51,11 +52,12 @@ waitFor().then(game=>{
     batch.members=ordered;batch.grammar=GRAMMARS[a];batch.started=false;batch.startStep=-1;batch.done=false;batch.voiceCount=Math.min(4,Math.max(3,Math.ceil(ordered.length/2)));
     ordered.forEach((enemy,i)=>{
       const r=enemy.__revealState;if(!r||r.activated)return;
-      enemy.__formationId=id;enemy.__formationVoice=i===0?0:1+((i-1)%(batch.voiceCount-1));
+      enemy.__formationId=id;enemy.__formationVoice=i===0?0:1+((i-1)%(batch.voiceCount-1));enemy.__formationSize=ordered.length;
       enemy.__formationOriginalHold=enemy.__formationOriginalHold??r.minHold;r.minHold=99;
     });
     state.formations.set(id,batch);state.lastFormation=batch;state.directed+=ordered.length;
     const focus=ordered.slice(0,mobile()?4:6);window.__pulseRailCamera?.frameEncounter?.(focus);
+    window.__pulseFormationLeaderReadability?.refresh?.();
   }
 
   function queue(enemy){
