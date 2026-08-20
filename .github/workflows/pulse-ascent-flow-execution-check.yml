@@ -1,0 +1,67 @@
+name: Pulse Ascent FLOW execution check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-flow-execution-check.yml'
+  workflow_dispatch:
+jobs:
+  flow-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check current combat integration
+        run: |
+          node --check --input-type=module < pulse-ascent/flow-combat-execution.js
+          grep -q "game.tryLock" pulse-ascent/flow-combat-execution.js
+          grep -q "game.releaseFire" pulse-ascent/flow-combat-execution.js
+          grep -q "mechanicalAdvantage:false" pulse-ascent/flow-combat-execution.js
+          grep -q "flow-combat-execution.js" pulse-ascent/index.html
+          grep -q "flow-combat-execution.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v48" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-flow-execution-server.log 2>&1 &
+          sleep 2
+      - name: Exercise high-FLOW firing presentation
+        run: |
+          cat > /tmp/flow-execution.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-flow-execution';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844}});const page=await context.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({completed:true,dismissed:false,step:4})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseFlowResonance&&window.__pulseFlowCombatExecution&&window.__pulsePilotPerformance,{timeout:15000});
+          await page.evaluate(()=>{const g=window.__pulseAscent;clearInterval(g.audio.timer);g.audio.timer=0;g.mult=6.1;});await page.waitForTimeout(220);
+          const pre=await page.evaluate(()=>window.__pulseFlowCombatExecution.stats());if(pre.tier!==3||pre.lockVisualGain!==1.35||pre.fireSyncGain<1||pre.mechanicalAdvantage!==false)throw new Error(`ASCENT execution state invalid: ${JSON.stringify(pre)}`);
+          await page.waitForFunction(()=>window.__pulseAscent.enemies.some(e=>!e.dead&&e.type!=='danger'),{timeout:6000});
+          await page.evaluate(()=>{const g=window.__pulseAscent,e=g.enemies.find(x=>!x.dead&&x.type!=='danger');g.clearLocks?.();e.locked=true;g.targetsLocked=[e];g.releaseFire();});
+          await page.waitForTimeout(260);
+          const post=await page.evaluate(()=>({execution:window.__pulseFlowCombatExecution.stats(),pilot:window.__pulsePilotPerformance.stats()}));
+          if(post.execution.releases<1||post.execution.fireSyncGain!==1.28||post.execution.lastCount<1||post.execution.mechanicalAdvantage!==false)throw new Error(`FLOW release presentation failed: ${JSON.stringify(post)}`);
+          if(post.pilot.fire<=0)throw new Error(`Pilot did not receive quantized FLOW fire gesture: ${JSON.stringify(post.pilot)}`);
+          await page.screenshot({path:`${out}/01-flow-execution-mobile.png`});
+          if(errors.length)throw new Error(`Browser errors: ${errors.join(' | ')}`);await browser.close();
+          NODE
+          node /tmp/flow-execution.mjs
+      - name: Upload FLOW execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-flow-execution
+          path: pulse-ascent-flow-execution
+          if-no-files-found: warn
