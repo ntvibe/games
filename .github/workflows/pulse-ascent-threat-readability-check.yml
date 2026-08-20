@@ -1,0 +1,74 @@
+name: Pulse Ascent threat readability check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/threat-readability.js'
+      - 'pulse-ascent/area-enemy-attacks.js'
+      - 'pulse-ascent/threat-dodge.js'
+      - 'pulse-ascent/service-worker.js'
+      - '.github/workflows/pulse-ascent-threat-readability-check.yml'
+  workflow_dispatch:
+jobs:
+  threat-readability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/threat-readability.js
+          node --check --input-type=module < pulse-ascent/area-enemy-attacks.js
+          grep -q "threat-readability.js" pulse-ascent/area-enemy-attacks.js
+          grep -q "NormalBlending" pulse-ascent/threat-readability.js
+          grep -q "pulse-ascent-v32" pulse-ascent/service-worker.js
+          grep -q "threat-readability.js" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise mobile threat guides
+        run: |
+          cat >/tmp/threat-readability.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='threat-readability-artifacts';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.click('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseAreaEnemyAttacks&&window.__pulseThreatReadability,{timeout:15000});
+          const state=await page.evaluate(()=>{
+            const g=window.__pulseAscent;
+            window.__pulseCampaign.state.selected=2;g.bar=20;g.section=2;
+            for(let i=0;i<5;i++)g.spawnEnemy('drone',new THREE.Vector3((i-2)*2,0,-18-i*3),2);
+            const before=g.enemies.length;
+            window.__pulseAreaEnemyAttacks.trigger(6);
+            return {before,attack:window.__pulseAreaEnemyAttacks.stats()};
+          }).catch(async()=>{
+            return await page.evaluate(()=>{const g=window.__pulseAscent;g.bar=20;g.section=2;return{attack:window.__pulseAreaEnemyAttacks.stats()}});
+          });
+          await page.waitForTimeout(500);
+          const read=await page.evaluate(()=>{const g=window.__pulseAscent,r=window.__pulseThreatReadability.stats(),threats=g.enemies.filter(e=>e.type==='danger'&&!e.dead);return{...r,threats:threats.length,guides:threats.filter(e=>e.__readabilityGuide).length,normal:threats.every(e=>e.__readabilityGuide?.path?.material?.blending===1)};});
+          if(read.threats<1||read.guides!==read.threats||read.active<1||!read.normal)throw new Error(`Threat readability invalid: ${JSON.stringify(read)} / ${JSON.stringify(state)}`);
+          await page.screenshot({path:`${out}/mobile-threat-guides.png`,fullPage:true});
+          if(errors.length)throw new Error(errors.join('\n'));
+          await browser.close();
+          NODE
+          node /tmp/threat-readability.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pulse-ascent-threat-readability
+          path: threat-readability-artifacts
