@@ -1,0 +1,85 @@
+name: Pulse Ascent attack anticipation WebGL check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-attack-anticipation-check.yml'
+  workflow_dispatch:
+jobs:
+  attack-anticipation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check anticipation module syntax and offline integration
+        run: |
+          node --check --input-type=module < pulse-ascent/enemy-attack-anticipation.js
+          grep -q "enemy-attack-anticipation.js" pulse-ascent/flow-combat-execution.js
+          grep -q "enemy-attack-anticipation.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v52" pulse-ascent/service-worker.js
+          grep -q "MIRROR OPEN" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "HELIX WIND" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "BRANCH RECOIL" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "CHOIR COUNT" pulse-ascent/enemy-attack-anticipation.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise pre-fire poses and delayed projectile launch
+        run: |
+          cat >/tmp/attack-anticipation.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-attack-anticipation';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseEnemyMotionRigs&&window.__pulseAreaEnemyAttacks&&window.__pulseEnemyAttackAnticipation,{timeout:25000});
+          const started=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
+            g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
+            const left=g.spawnEnemy('sentinel',new THREE.Vector3(-3,.4,-21),0),right=g.spawnEnemy('sentinel',new THREE.Vector3(3,-.3,-22),.4);
+            await new Promise(r=>setTimeout(r,900));
+            const before=[left,right].map(e=>e.__fusionModel.children.filter(c=>c.name==='rez-volume-model').map(m=>[m.scale.x,m.scale.y,m.scale.z]));
+            const triggered=window.__pulseAreaEnemyAttacks.trigger(6);
+            await new Promise(r=>setTimeout(r,65));
+            const threats=g.enemies.filter(e=>e.type==='danger'&&e.__areaAttackSignature);
+            const during=[left,right].map(e=>e.__fusionModel.children.filter(c=>c.name==='rez-volume-model').map(m=>[m.scale.x,m.scale.y,m.scale.z]));
+            const changed=during.map((entry,i)=>entry.some((v,j)=>v.some((n,k)=>Math.abs(n-(before[i][j]?.[k]??n))>.001)));
+            return{triggered,threats:threats.length,hidden:threats.map(e=>e.group.visible===false),speed:threats.map(e=>e.speed),armed:threats.map(e=>!!e.__attackAnticipationArmed),changed,stats:window.__pulseEnemyAttackAnticipation.stats()};
+          });
+          if(!started.triggered||started.threats<2)throw new Error(`Area attack did not spawn paired threats: ${JSON.stringify(started)}`);
+          if(started.hidden.some(v=>!v)||started.speed.some(v=>v!==0)||started.armed.some(v=>!v))throw new Error(`Threat did not wait behind anticipation pose: ${JSON.stringify(started)}`);
+          if(started.changed.some(v=>!v))throw new Error(`Glass attack pose did not articulate source models: ${JSON.stringify(started)}`);
+          if(started.stats.lastName!=='MIRROR OPEN'||started.stats.active<1)throw new Error(`Anticipation diagnostics invalid: ${JSON.stringify(started)}`);
+          await page.screenshot({path:`${out}/mirror-open-windup-mobile.png`,fullPage:true});
+          await page.waitForTimeout(260);
+          const launched=await page.evaluate(()=>{const g=window.__pulseAscent,t=g.enemies.filter(e=>e.type==='danger'&&e.__areaAttackSignature);return{visible:t.map(e=>e.group.visible),speed:t.map(e=>e.speed),launched:t.map(e=>!!e.__attackLaunched),stats:window.__pulseEnemyAttackAnticipation.stats()};});
+          if(launched.visible.some(v=>!v)||launched.speed.some(v=>v<=0)||launched.launched.some(v=>!v))throw new Error(`Threats did not launch after windup: ${JSON.stringify(launched)}`);
+          if(launched.stats.launched<2||launched.stats.active!==0)throw new Error(`Launch cleanup invalid: ${JSON.stringify(launched)}`);
+          await page.screenshot({path:`${out}/mirror-crossfire-launched-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({started,launched,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({started,launched},null,2));
+          NODE
+          node /tmp/attack-anticipation.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-attack-anticipation
+          path: pulse-ascent-attack-anticipation/
+          if-no-files-found: warn
+          retention-days: 7
