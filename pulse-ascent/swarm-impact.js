@@ -28,6 +28,8 @@ waitFor().then(game=>{
 
   function applyImpact(target,point,q,damage,index=0,chain=false){
     if(!valid(target))return false;
+    const feedback={weapon:'swarm',q,at:performance.now(),index,total:1,chain};
+    target.__hitFeedbackCtx=feedback;if(target.bossPart&&target.part)target.part.__hitFeedbackCtx=feedback;
     const killed=target.hit?.(damage)??false;
     game.particles.burst(point,chain?14:22,0xb18aff,chain?3.2:4.8,chain?6:9);
     if(!chain){
