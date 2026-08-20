@@ -84,8 +84,8 @@ waitFor().then(game=>{
 
     stage.plates.forEach((p,i)=>{const u=p.userData,a=u.a,part=boss.parts[i],dead=!!part?.dead,partDamage=part?clamp(1-part.hp/15,0,1):0,breachAmt=dead?1:partDamage*.38;
       const radial=1+open*.52+breachAmt*.8;p.position.set(Math.cos(a)*2.35*radial,Math.sin(a)*1.7*(1+open*.42+breachAmt*.48),(i%2?-.36:.36)+Math.sin(t*.8+i)*open*.18+(dead?(i%3-1)*.7:0));
-      p.rotation.x=u.baseRot.x+(dead?.45+i*.03:partDamage*.08)+Math.sin(t*.7+u.seed)*open*.05;p.rotation.y=u.baseRot.y+(dead?(i%2?.65:-.65):open*(i%2?.16:-.16));p.rotation.z=u.baseRot.z+(dead?(i%2?.28:-.28):Math.sin(t*.55+i)*open*.07);
-      p.scale.set(.96,1.18,.72).multiplyScalar(1+beat*.018*(1-damage));p.material.opacity=dead?.26:clamp(.76-damage*.22-open*.14,.34,.76);p.material.emissiveIntensity=.035+partDamage*.08+beat*.025+(dead?.03:0);p.traverse(o=>{if(o.isLineSegments)o.material.opacity=dead?.08:.18+partDamage*.12;});
+      p.rotation.x=u.baseRot.x+(dead ? .45+i*.03 : partDamage*.08)+Math.sin(t*.7+u.seed)*open*.05;p.rotation.y=u.baseRot.y+(dead ? (i%2 ? .65 : -.65) : open*(i%2 ? .16 : -.16));p.rotation.z=u.baseRot.z+(dead ? (i%2 ? .28 : -.28) : Math.sin(t*.55+i)*open*.07);
+      p.scale.set(.96,1.18,.72).multiplyScalar(1+beat*.018*(1-damage));p.material.opacity=dead ? .26 : clamp(.76-damage*.22-open*.14,.34,.76);p.material.emissiveIntensity=.035+partDamage*.08+beat*.025+(dead ? .03 : 0);p.traverse(o=>{if(o.isLineSegments)o.material.opacity=dead ? .08 : .18+partDamage*.12;});
     });
 
     stage.ribs.forEach((r,i)=>{const a=r.userData.a;r.position.set(Math.cos(a)*(1.05+open*.22),Math.sin(a)*(.72+open*.18),Math.sin(t*.9+i)*open*.12);r.material.opacity=clamp(.7-damage*.18,.42,.7);r.material.emissiveIntensity=.03+damage*.08;});
