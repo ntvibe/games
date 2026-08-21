@@ -79,13 +79,16 @@ jobs:
           const resolution=await page.evaluate(()=>{const g=window.__pulseAscent,before=g.enemies.filter(e=>e.type==='danger'&&!e.dead).length;g.onStep(14,g.audio.ctx?.currentTime+.02);return{phrase:window.__pulseEnemyPhraseComposer.stats(),anticipation:window.__pulseEnemyAttackAnticipation.stats(),counter:window.__pulsePlayerCounterpoint.stats(),before,danger:g.enemies.filter(e=>e.type==='danger'&&!e.dead).length};});
           if(resolution.phrase.lastVoice!==3||resolution.phrase.resolutions<1||resolution.phrase.steps<3)throw new Error(`Resolution voice missing: ${JSON.stringify(resolution)}`);
           if(resolution.counter.suppressed<1||resolution.counter.lastResult!=='RESOLUTION BROKEN')throw new Error(`Enemy resolution was not countered: ${JSON.stringify(resolution)}`);
-          if(resolution.danger>resolution.before)throw new Error(`Countered resolution still added danger: ${JSON.stringify(resolution)}`);
-          if(resolution.danger>5)throw new Error(`Phrase exceeded mobile danger cap: ${JSON.stringify(resolution)}`);
+          await page.waitForTimeout(140);
+          const settled=await page.evaluate(()=>({counter:window.__pulsePlayerCounterpoint.stats(),danger:window.__pulseAscent.enemies.filter(e=>e.type==='danger'&&!e.dead).length}));
+          if(settled.counter.suppressed<2)throw new Error(`Delayed mirror voice escaped strong counterpoint: ${JSON.stringify({resolution,settled})}`);
+          if(settled.danger>resolution.before)throw new Error(`Countered resolution still added danger: ${JSON.stringify({resolution,settled})}`);
+          if(settled.danger>5)throw new Error(`Phrase exceeded mobile danger cap: ${JSON.stringify({resolution,settled})}`);
           if(resolution.anticipation.states.some(s=>s.gridSynced===false))throw new Error(`Phrase shots escaped beat-quantized anticipation: ${JSON.stringify(resolution)}`);
           await page.screenshot({path:`${out}/counterpoint-resolution-mobile.png`,fullPage:true});
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({setup,call,response,armed,resolution,errors},null,2));
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({setup,call,response,armed,resolution,settled,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));
-          console.log(JSON.stringify({setup,call,response,armed,resolution},null,2));
+          console.log(JSON.stringify({setup,call,response,armed,resolution,settled},null,2));
           NODE
           node /tmp/enemy-phrase.mjs
       - name: Upload evidence
