@@ -1,0 +1,72 @@
+name: Pulse Ascent formation scar audio check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-formation-scar-audio-check.yml'
+  workflow_dispatch:
+jobs:
+  scar-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax and integration
+        run: |
+          node --check --input-type=module < pulse-ascent/formation-weapon-scar-audio.js
+          node --check --input-type=module < pulse-ascent/formation-consequence-director.js
+          grep -q "formation-weapon-scar-audio.js" pulse-ascent/formation-consequence-director.js
+          grep -q "__pulseFormationWeaponScarAudio" pulse-ascent/formation-weapon-scar-audio.js
+          grep -q "COMMAND BREACH" pulse-ascent/formation-weapon-scar-audio.js
+          grep -q "VOICE FRACTURE" pulse-ascent/formation-weapon-scar-audio.js
+          grep -q "SYNC COLLAPSE" pulse-ascent/formation-weapon-scar-audio.js
+          grep -q "pulse-ascent-v67" pulse-ascent/service-worker.js
+          grep -q "formation-weapon-scar-audio.js" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise musical scar identities
+        run: |
+          cat >/tmp/scar-audio.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-formation-scar-audio';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist','--autoplay-policy=no-user-gesture-required']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseFormationWeaponScarAudio&&window.__pulseAreaAudio,{timeout:25000});
+          const state=await page.evaluate(()=>{
+            const a=window.__pulseFormationWeaponScarAudio,g=window.__pulseAscent;
+            const mk=(id,weapon,voice=2)=>({id,area:1,weapon,successor:{__commandWeaponScar:{weapon,voice,expiresStep:(g.audio.step||0)+16}}});
+            a.arm(mk(7101,'lance'));a.processStep(0,g.audio.ctx.currentTime+.02);a.processStep(8,g.audio.ctx.currentTime+.04);
+            a.arm(mk(7102,'swarm',2));[1,5,9,13].forEach((s,i)=>a.processStep(s,g.audio.ctx.currentTime+.08+i*.02));
+            a.arm(mk(7103,'lock'));[2,6,10,14].forEach((s,i)=>a.processStep(s,g.audio.ctx.currentTime+.18+i*.02));
+            return a.stats();
+          });
+          if(state.triggered<3||state.lanceGaps<2||state.swarmVoices<2||state.lockStutters<3)throw new Error(`Musical scar identities missing: ${JSON.stringify(state)}`);
+          if(state.lastName!=='SYNC COLLAPSE')throw new Error(`Unexpected final scar identity: ${JSON.stringify(state)}`);
+          await page.screenshot({path:`${out}/scar-audio-runtime-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({state,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));console.log(JSON.stringify(state,null,2));
+          NODE
+          node /tmp/scar-audio.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-formation-scar-audio
+          path: pulse-ascent-formation-scar-audio/
+          if-no-files-found: warn
+          retention-days: 7
