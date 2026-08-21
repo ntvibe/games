@@ -1,0 +1,93 @@
+name: Pulse Ascent spatial combat audio
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-spatial-combat-audio-check.yml'
+  workflow_dispatch:
+jobs:
+  spatial-combat-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and integration checks
+        run: |
+          node --check --input-type=module < pulse-ascent/enemy-attack-anticipation.js
+          node --check --input-type=module < pulse-ascent/boss-consequences.js
+          grep -q "sourcePan" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "spatialCues" pulse-ascent/enemy-attack-anticipation.js
+          grep -q "bossAttackCue" pulse-ascent/boss-consequences.js
+          grep -q "rolePan" pulse-ascent/boss-consequences.js
+          grep -q "__bossSpatialPan" pulse-ascent/boss-consequences.js
+          grep -q "pulse-ascent-v69" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise positional enemy and boss cues
+        run: |
+          cat >/tmp/spatial-combat-audio.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-spatial-combat-audio';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.addInitScript(()=>localStorage.setItem('pulse-ascent-onboarding-v1',JSON.stringify({complete:true,step:5})));
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseAreaEnemyAttacks&&window.__pulseEnemyAttackAnticipation&&window.__pulseBossConsequences,{timeout:25000});
+
+          const enemy=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
+            g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
+            g.spawnEnemy('sentinel',new THREE.Vector3(-3.8,.4,-21),0);g.spawnEnemy('sentinel',new THREE.Vector3(3.8,-.3,-22),.4);
+            await new Promise(r=>setTimeout(r,900));
+            const triggered=window.__pulseAreaEnemyAttacks.trigger(6);await new Promise(r=>setTimeout(r,80));
+            const threats=g.enemies.filter(e=>e.type==='danger'&&e.__areaAttackSignature);
+            return{triggered,pans:threats.map(e=>e.__attackSourcePan),stats:window.__pulseEnemyAttackAnticipation.stats(),stereo:typeof g.audio.ctx.createStereoPanner==='function'};
+          });
+          if(!enemy.stereo)throw new Error('Chromium WebAudio StereoPannerNode unavailable');
+          if(!enemy.triggered||enemy.pans.length<2)throw new Error(`Paired spatial attack missing: ${JSON.stringify(enemy)}`);
+          if(!(Math.min(...enemy.pans)<-.2&&Math.max(...enemy.pans)>.2))throw new Error(`Enemy anticipation did not follow left/right source positions: ${JSON.stringify(enemy)}`);
+          if(enemy.stats.spatialCues<4||enemy.stats.maxCuePan-enemy.stats.minCuePan<.45)throw new Error(`Enemy cue stereo field too narrow: ${JSON.stringify(enemy.stats)}`);
+          await page.screenshot({path:`${out}/01-spatial-mirror-windup-mobile.png`,fullPage:true});
+
+          const boss=await page.evaluate(async()=>{
+            const g=window.__pulseAscent;for(const e of [...g.enemies])e.dispose?.();g.enemies=[];
+            const {Boss}=await import('/pulse-ascent/entities.js'),b=new Boss(g);b.group.position.set(0,0,-13);g.boss=b;
+            window.__pulseBossVulnerability?.patchBoss?.(b);await new Promise(r=>setTimeout(r,180));
+            const left=window.__pulseBossConsequences.bossAttackCue('twin-cut',{x:-4}),right=window.__pulseBossConsequences.bossAttackCue('twin-cut',{x:4});
+            const spawned=window.__pulseDirector.spawnThreat(g,{x:3.5,y:0,z:-28,targetX:0,targetY:0,phase:1,accent:0xff315f,tag:'twin-cut'});
+            await new Promise(r=>setTimeout(r,60));
+            return{left,right,spawnedPan:spawned?.__bossSpatialPan,stats:window.__pulseBossConsequences.stats()};
+          });
+          if(!(boss.left<-.35&&boss.right>.35))throw new Error(`Boss attack warning pan did not follow emitter side: ${JSON.stringify(boss)}`);
+          if(!(boss.spawnedPan>.25))throw new Error(`Spawned boss threat lost positional cue metadata: ${JSON.stringify(boss)}`);
+          if(boss.stats.attackCues<3||boss.stats.panRange<.8)throw new Error(`Boss spatial cue diagnostics too weak: ${JSON.stringify(boss.stats)}`);
+          await page.screenshot({path:`${out}/02-spatial-boss-warning-mobile.png`,fullPage:true});
+
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({enemy,boss,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({enemy,boss},null,2));
+          NODE
+          node /tmp/spatial-combat-audio.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-spatial-combat-audio
+          path: pulse-ascent-spatial-combat-audio/
+          if-no-files-found: warn
+          retention-days: 7
