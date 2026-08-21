@@ -14,9 +14,10 @@ const RELEASE_GRID=[2,4,4,4,4];
 
 waitFor().then(game=>{
   if(game.__enemyAttackAnticipationInstalled)return;game.__enemyAttackAnticipationInstalled=true;
-  const active=new Set();let armed=0,launched=0,lastArea=1,lastName='',lastLaunchErrorMs=0,syncedLaunches=0;
+  const active=new Set();let armed=0,launched=0,lastArea=1,lastName='',lastLaunchErrorMs=0,syncedLaunches=0,spatialCues=0,lastCuePan=0,minCuePan=1,maxCuePan=-1;
   const area=()=>clamp((window.__pulseCampaign?.state?.selected||1)-1,0,4);
   const perfNow=()=>performance.now()/1000;
+  const sourcePan=source=>clamp(((source?.group?.position?.x||0)-(game.camera?.position?.x||0))/7.5,-.78,.78);
 
   function nearestSource(threat){
     if(!threat?.group)return null;
@@ -41,28 +42,31 @@ waitFor().then(game=>{
     return{now,anchor,stepDur,currentStep,targetStep,targetAudio,duration:Math.max(.055,targetAudio-now)};
   }
 
-  function scheduleCue(a,window){
+  function scheduleCue(a,window,source){
     const audio=game.audio,ctx=audio?.ctx;if(!ctx||!window)return;
-    const root=(audio.rootMidi||43)+24,step=window.stepDur,target=window.targetAudio;
-    const play=(offset,n,type='sine',gain=.009,pan=0,dur=.06)=>{
+    const root=(audio.rootMidi||43)+24,step=window.stepDur,target=window.targetAudio,basePan=sourcePan(source);
+    const at=(offset=0)=>{
+      const p=clamp(basePan+offset,-.88,.88);spatialCues++;lastCuePan=p;minCuePan=Math.min(minCuePan,p);maxCuePan=Math.max(maxCuePan,p);return p;
+    };
+    const play=(offset,n,type='sine',gain=.009,panOffset=0,dur=.06)=>{
       const t=target-offset*step;if(t<=ctx.currentTime+.006)return;
-      audio.osc?.(type,audio.midi(root+n),t,dur,gain,audio.fx,0,pan);
+      audio.osc?.(type,audio.midi(root+n),t,dur,gain,audio.fx,0,at(panOffset));
     };
     if(a===0){
-      play(2,0,'square',.007,-.25,.045);play(1,7,'square',.009,.25,.045);
+      play(2,0,'square',.007,-.16,.045);play(1,7,'square',.009,.16,.045);
     }else if(a===1){
-      // Mirror wings open as two sixteenth-note voices and resolve together on the beat.
-      play(2,0,'sine',.01,-.48,.075);play(1,7,'triangle',.01,.48,.075);
-      audio.osc?.('sine',audio.midi(root+12),target,.08,.008,audio.fx,0,0);
+      // Mirror wings open as two sixteenth-note voices around the real attacker's screen position.
+      play(2,0,'sine',.01,-.28,.075);play(1,7,'triangle',.01,.28,.075);
+      audio.osc?.('sine',audio.midi(root+12),target,.08,.008,audio.fx,0,at(0));
     }else if(a===2){
-      // A measured helix winding over three subdivisions.
-      play(3,0,'sine',.007,-.45,.08);play(2,3,'triangle',.008,0,.08);play(1,7,'sine',.009,.45,.08);
+      // A measured helix winding across the source's local stereo field.
+      play(3,0,'sine',.007,-.24,.08);play(2,3,'triangle',.008,0,.08);play(1,7,'sine',.009,.24,.08);
     }else if(a===3){
-      play(2,-5,'triangle',.009,-.25,.065);play(1,0,'square',.007,.25,.055);
+      play(2,-5,'triangle',.009,-.16,.065);play(1,0,'square',.007,.16,.055);
     }else{
-      // Four choir voices count through the beat before the chord attack resolves.
-      const notes=[0,3,7,12];for(let i=0;i<4;i++)play(4-i,notes[i],i%2?'triangle':'sine',.0075,(i-1.5)*.28,.085);
-      [0,7,12].forEach((n,i)=>audio.osc?.(i?'triangle':'sine',audio.midi(root+12+n),target,.11,.0065,audio.fx,0,(i-1)*.38));
+      // Four choir voices count around the firing formation, then resolve at its actual screen position.
+      const notes=[0,3,7,12];for(let i=0;i<4;i++)play(4-i,notes[i],i%2?'triangle':'sine',.0075,(i-1.5)*.18,.085);
+      [0,7,12].forEach((n,i)=>audio.osc?.(i?'triangle':'sine',audio.midi(root+12+n),target,.11,.0065,audio.fx,0,at((i-1)*.22)));
     }
   }
 
@@ -108,12 +112,12 @@ waitFor().then(game=>{
     if(!source)return;
     const ownsPose=!source.__attackAnticipation,poseState=ownsPose?capture(source,a,duration):null;
     if(ownsPose&&!poseState)return;
-    const originalSpeed=threat.speed||24,startPerf=perfNow();
-    threat.__attackAnticipationArmed=true;threat.__attackSource=source;threat.__attackWindup=duration;threat.__attackOriginalSpeed=originalSpeed;
+    const originalSpeed=threat.speed||24,startPerf=perfNow(),pan=sourcePan(source);
+    threat.__attackAnticipationArmed=true;threat.__attackSource=source;threat.__attackWindup=duration;threat.__attackOriginalSpeed=originalSpeed;threat.__attackSourcePan=pan;
     threat.__attackGridSynced=!!music;threat.__attackTargetStep=music?.targetStep??-1;threat.__attackTargetAudio=music?.targetAudio??0;
     threat.speed=0;if(threat.group)threat.group.visible=false;
-    const item={threat,source,pose:poseState,startPerf,duration,originalSpeed,area:a,ownsPose,music};active.add(item);armed++;lastArea=a+1;lastName=AREA_NAMES[a];
-    if(music)scheduleCue(a,music);
+    const item={threat,source,pose:poseState,startPerf,duration,originalSpeed,area:a,ownsPose,music,pan};active.add(item);armed++;lastArea=a+1;lastName=AREA_NAMES[a];
+    if(music)scheduleCue(a,music,source);
   }
 
   const baseSpawn=game.spawnEnemy.bind(game);
@@ -134,7 +138,7 @@ waitFor().then(game=>{
       if(due){
         if(ownsPose)restore(poseState);threat.speed=originalSpeed;if(threat.group)threat.group.visible=true;threat.__attackLaunched=true;threat.__attackLaunchTime=pNow;active.delete(item);launched++;
         if(music&&Number.isFinite(audioNow)){lastLaunchErrorMs=(audioNow-music.targetAudio)*1000;syncedLaunches++;threat.__attackLaunchErrorMs=lastLaunchErrorMs;}
-        dispatchEvent(new CustomEvent('pulse:enemy-beat-launch',{detail:{area:item.area+1,name:AREA_NAMES[item.area],targetStep:music?.targetStep??-1,errorMs:lastLaunchErrorMs}}));
+        dispatchEvent(new CustomEvent('pulse:enemy-beat-launch',{detail:{area:item.area+1,name:AREA_NAMES[item.area],targetStep:music?.targetStep??-1,errorMs:lastLaunchErrorMs,pan:item.pan}}));
         game.haptic?.(reduced()?4:7);
       }
     }
@@ -143,6 +147,6 @@ waitFor().then(game=>{
 
   window.__pulseEnemyAttackAnticipation={
     areaNames:AREA_NAMES,windups:WINDUP,leadSteps:LEAD_STEPS,releaseGrid:RELEASE_GRID,arm,
-    stats:()=>({active:active.size,armed,launched,syncedLaunches,lastArea,lastName,lastLaunchErrorMs:Number(lastLaunchErrorMs.toFixed(2)),states:[...active].map(x=>({area:x.area+1,name:AREA_NAMES[x.area],progress:Number((x.pose?.progress||0).toFixed(3)),visible:x.threat.group?.visible!==false,speed:x.threat.speed||0,ownsPose:x.ownsPose,gridSynced:!!x.music,targetStep:x.music?.targetStep??-1,targetAudio:x.music?Number(x.music.targetAudio.toFixed(4)):0}))})
+    stats:()=>({active:active.size,armed,launched,syncedLaunches,lastArea,lastName,lastLaunchErrorMs:Number(lastLaunchErrorMs.toFixed(2)),spatialCues,lastCuePan:Number(lastCuePan.toFixed(3)),minCuePan:spatialCues?Number(minCuePan.toFixed(3)):0,maxCuePan:spatialCues?Number(maxCuePan.toFixed(3)):0,states:[...active].map(x=>({area:x.area+1,name:AREA_NAMES[x.area],progress:Number((x.pose?.progress||0).toFixed(3)),visible:x.threat.group?.visible!==false,speed:x.threat.speed||0,ownsPose:x.ownsPose,gridSynced:!!x.music,targetStep:x.music?.targetStep??-1,targetAudio:x.music?Number(x.music.targetAudio.toFixed(4)):0,pan:Number((x.pan||0).toFixed(3))}))})
   };
 });
