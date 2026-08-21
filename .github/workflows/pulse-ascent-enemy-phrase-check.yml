@@ -1,0 +1,86 @@
+name: Pulse Ascent enemy phrase WebGL check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-enemy-phrase-check.yml'
+  workflow_dispatch:
+jobs:
+  enemy-phrase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check phrase composer syntax and integration
+        run: |
+          node --check --input-type=module < pulse-ascent/enemy-phrase-composer.js
+          grep -q "enemy-phrase-composer.js" pulse-ascent/flow-combat-execution.js
+          grep -q "enemy-phrase-composer.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v54" pulse-ascent/service-worker.js
+          grep -q "MIRROR PHRASE" pulse-ascent/enemy-phrase-composer.js
+          grep -q "SERAPH PHRASE" pulse-ascent/enemy-phrase-composer.js
+          grep -q "pulse:enemy-phrase-step" pulse-ascent/enemy-phrase-composer.js
+          grep -q "NormalBlending" pulse-ascent/enemy-phrase-composer.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise call response resolution phrase
+        run: |
+          cat >/tmp/enemy-phrase.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-enemy-phrase';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseAreaEnemyAttacks&&window.__pulseEnemyAttackAnticipation&&window.__pulseEnemyPhraseComposer,{timeout:25000});
+          const setup=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
+            g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
+            g.spawnEnemy('sentinel',new THREE.Vector3(-3,.45,-21),0);g.spawnEnemy('sentinel',new THREE.Vector3(3,-.35,-22),.4);
+            await new Promise(r=>setTimeout(r,900));
+            return window.__pulseEnemyPhraseComposer.stats();
+          });
+          if(setup.name!=='MIRROR PHRASE'||setup.phraseSteps.join(',')!=='6,10,14')throw new Error(`Glass phrase profile invalid: ${JSON.stringify(setup)}`);
+
+          const call=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(6,g.audio.ctx?.currentTime+.02);return window.__pulseEnemyPhraseComposer.stats();});
+          await page.waitForTimeout(45);
+          if(call.phrases<1||call.lastVoice!==1)throw new Error(`Call voice missing: ${JSON.stringify(call)}`);
+
+          const response=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(10,g.audio.ctx?.currentTime+.02);const s=window.__pulseEnemyPhraseComposer.stats(),r=g.enemies.filter(e=>e.__enemyPhraseResponse);return{s,response:r.length,armed:r.map(e=>!!e.__attackAnticipationArmed),normal:r.map(e=>e.mesh?.material?.blending===1)};});
+          await page.waitForTimeout(45);
+          if(response.s.responseShots<1||response.s.lastVoice!==2||response.response<1)throw new Error(`Response voice missing: ${JSON.stringify(response)}`);
+          await page.screenshot({path:`${out}/mirror-response-windup-mobile.png`,fullPage:true});
+
+          const resolution=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(14,g.audio.ctx?.currentTime+.02);return{phrase:window.__pulseEnemyPhraseComposer.stats(),anticipation:window.__pulseEnemyAttackAnticipation.stats(),danger:g.enemies.filter(e=>e.type==='danger').length};});
+          if(resolution.phrase.lastVoice!==3||resolution.phrase.resolutions<1||resolution.phrase.steps<3)throw new Error(`Resolution voice missing: ${JSON.stringify(resolution)}`);
+          if(resolution.danger>5)throw new Error(`Phrase exceeded mobile danger cap: ${JSON.stringify(resolution)}`);
+          if(resolution.anticipation.states.some(s=>s.gridSynced===false))throw new Error(`Phrase shots escaped beat-quantized anticipation: ${JSON.stringify(resolution)}`);
+          await page.screenshot({path:`${out}/mirror-resolution-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({setup,call,response,resolution,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({setup,call,response,resolution},null,2));
+          NODE
+          node /tmp/enemy-phrase.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-enemy-phrase
+          path: pulse-ascent-enemy-phrase/
+          if-no-files-found: warn
+          retention-days: 7
