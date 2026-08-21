@@ -14,15 +14,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check phrase composer syntax and integration
+      - name: Check phrase composer and counterpoint syntax and integration
         run: |
           node --check --input-type=module < pulse-ascent/enemy-phrase-composer.js
+          node --check --input-type=module < pulse-ascent/player-counterpoint.js
           grep -q "enemy-phrase-composer.js" pulse-ascent/flow-combat-execution.js
+          grep -q "player-counterpoint.js" pulse-ascent/flow-combat-execution.js
           grep -q "enemy-phrase-composer.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v54" pulse-ascent/service-worker.js
+          grep -q "player-counterpoint.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v55" pulse-ascent/service-worker.js
           grep -q "MIRROR PHRASE" pulse-ascent/enemy-phrase-composer.js
           grep -q "SERAPH PHRASE" pulse-ascent/enemy-phrase-composer.js
           grep -q "pulse:enemy-phrase-step" pulse-ascent/enemy-phrase-composer.js
+          grep -q "COUNTERPOINT BREAK" pulse-ascent/player-counterpoint.js
+          grep -q "HARMONIC CUT" pulse-ascent/player-counterpoint.js
+          grep -q "pulse:player-counterpoint" pulse-ascent/player-counterpoint.js
           grep -q "NormalBlending" pulse-ascent/enemy-phrase-composer.js
       - name: Install Playwright
         run: |
@@ -33,7 +39,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
           sleep 2
-      - name: Exercise call response resolution phrase
+      - name: Exercise call response counterpoint resolution
         run: |
           cat >/tmp/enemy-phrase.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -47,7 +53,7 @@ jobs:
           page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
           page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseAreaEnemyAttacks&&window.__pulseEnemyAttackAnticipation&&window.__pulseEnemyPhraseComposer,{timeout:25000});
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseAreaEnemyAttacks&&window.__pulseEnemyAttackAnticipation&&window.__pulseEnemyPhraseComposer&&window.__pulsePlayerCounterpoint,{timeout:25000});
           const setup=await page.evaluate(async()=>{
             const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
             g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
@@ -61,19 +67,25 @@ jobs:
           await page.waitForTimeout(45);
           if(call.phrases<1||call.lastVoice!==1)throw new Error(`Call voice missing: ${JSON.stringify(call)}`);
 
-          const response=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(10,g.audio.ctx?.currentTime+.02);const s=window.__pulseEnemyPhraseComposer.stats(),r=g.enemies.filter(e=>e.__enemyPhraseResponse);return{s,response:r.length,armed:r.map(e=>!!e.__attackAnticipationArmed),normal:r.map(e=>e.mesh?.material?.blending===1)};});
+          const response=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(10,g.audio.ctx?.currentTime+.02);const s=window.__pulseEnemyPhraseComposer.stats(),r=g.enemies.filter(e=>e.__enemyPhraseResponse);return{s,response:r.length,armed:r.map(e=>!!e.__attackAnticipationArmed),normal:r.map(e=>e.mesh?.material?.blending===1),counter:window.__pulsePlayerCounterpoint.stats()};});
           await page.waitForTimeout(45);
-          if(response.s.responseShots<1||response.s.lastVoice!==2||response.response<1)throw new Error(`Response voice missing: ${JSON.stringify(response)}`);
+          if(response.s.responseShots<1||response.s.lastVoice!==2||response.response<1||!response.counter.open)throw new Error(`Response/counter window missing: ${JSON.stringify(response)}`);
           await page.screenshot({path:`${out}/mirror-response-windup-mobile.png`,fullPage:true});
 
-          const resolution=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(14,g.audio.ctx?.currentTime+.02);return{phrase:window.__pulseEnemyPhraseComposer.stats(),anticipation:window.__pulseEnemyAttackAnticipation.stats(),danger:g.enemies.filter(e=>e.type==='danger').length};});
+          const armed=await page.evaluate(()=>{const g=window.__pulseAscent;g.scoreTiming(.96,4);return window.__pulsePlayerCounterpoint.stats();});
+          if(!armed.armed||!armed.strong||armed.answers<1)throw new Error(`Perfect multi-lock did not arm counterpoint: ${JSON.stringify(armed)}`);
+          await page.screenshot({path:`${out}/counterpoint-armed-mobile.png`,fullPage:true});
+
+          const resolution=await page.evaluate(()=>{const g=window.__pulseAscent,before=g.enemies.filter(e=>e.type==='danger'&&!e.dead).length;g.onStep(14,g.audio.ctx?.currentTime+.02);return{phrase:window.__pulseEnemyPhraseComposer.stats(),anticipation:window.__pulseEnemyAttackAnticipation.stats(),counter:window.__pulsePlayerCounterpoint.stats(),before,danger:g.enemies.filter(e=>e.type==='danger'&&!e.dead).length};});
           if(resolution.phrase.lastVoice!==3||resolution.phrase.resolutions<1||resolution.phrase.steps<3)throw new Error(`Resolution voice missing: ${JSON.stringify(resolution)}`);
+          if(resolution.counter.suppressed<1||resolution.counter.lastResult!=='RESOLUTION BROKEN')throw new Error(`Enemy resolution was not countered: ${JSON.stringify(resolution)}`);
+          if(resolution.danger>resolution.before)throw new Error(`Countered resolution still added danger: ${JSON.stringify(resolution)}`);
           if(resolution.danger>5)throw new Error(`Phrase exceeded mobile danger cap: ${JSON.stringify(resolution)}`);
           if(resolution.anticipation.states.some(s=>s.gridSynced===false))throw new Error(`Phrase shots escaped beat-quantized anticipation: ${JSON.stringify(resolution)}`);
-          await page.screenshot({path:`${out}/mirror-resolution-mobile.png`,fullPage:true});
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({setup,call,response,resolution,errors},null,2));
+          await page.screenshot({path:`${out}/counterpoint-resolution-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({setup,call,response,armed,resolution,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));
-          console.log(JSON.stringify({setup,call,response,resolution},null,2));
+          console.log(JSON.stringify({setup,call,response,armed,resolution},null,2));
           NODE
           node /tmp/enemy-phrase.mjs
       - name: Upload evidence
