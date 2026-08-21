@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import './formation-combat-state.js';
+import './formation-weapon-scar-visual.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mobile=()=>innerWidth<760||innerHeight<520||matchMedia('(pointer: coarse)').matches;
