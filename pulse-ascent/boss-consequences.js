@@ -26,7 +26,7 @@ async function init(){
   if(game.__bossConsequencesInstalled)return;game.__bossConsequencesInstalled=true;
 
   const state={
-    boss:null,fracture:null,spawnSerial:0,suppressed:0,widened:0,slowed:0,misfires:0,audioCues:0,
+    boss:null,fracture:null,spawnSerial:0,suppressed:0,widened:0,slowed:0,misfires:0,audioCues:0,attackCues:0,spatialCues:0,lastPan:0,minPan:1,maxPan:-1,
     lastBroken:{EMITTER:0,GATE:0,RESONATOR:0},lastBand:0,lastAudioBar:-1,stability:1,roleSuppressed:{EMITTER:0,GATE:0,RESONATOR:0}
   };
   const brokenCounts=()=>{
@@ -37,22 +37,48 @@ async function init(){
   };
   const healthDamage=()=>game.boss?clamp(1-game.boss.healthRatio(),0,1):0;
   const stabilityFor=(broken,damage)=>clamp(1-damage*.62-broken.EMITTER*.07-broken.GATE*.055-broken.RESONATOR*.035,.08,1);
+  const recordPan=pan=>{const p=clamp(pan,-.86,.86);state.spatialCues++;state.lastPan=p;state.minPan=Math.min(state.minPan,p);state.maxPan=Math.max(state.maxPan,p);return p;};
+  const bossPan=()=>clamp(((game.boss?.group?.position?.x||0)-(game.camera?.position?.x||0))/7,-.7,.7);
+  const rolePan=(role)=>{
+    const boss=game.boss;if(!boss||!role)return bossPan();
+    const parts=(boss.parts||[]).filter(p=>p.role===role&&p.pivot);if(!parts.length)return bossPan();
+    const tmp=new THREE.Vector3();let sum=0;
+    for(const p of parts){p.pivot.getWorldPosition(tmp);sum+=tmp.x-(game.camera?.position?.x||0);}
+    return clamp((sum/parts.length)/7,-.72,.72);
+  };
 
   const instabilityTone=(kind='damage',severity=.5)=>{
     const a=game.audio;if(!a?.ctx||a.ctx.state==='suspended')return;
-    const t=a.ctx.currentTime+.006,s=clamp(severity,0,1);state.audioCues++;
+    const t=a.ctx.currentTime+.006,s=clamp(severity,0,1),base=kind==='damage'?bossPan():rolePan(kind);state.audioCues++;
     if(kind==='EMITTER'){
-      a.osc?.('square',a.midi?.(31)??49,t,.12,.015+s*.012,a.fx,-14,-.35);
-      a.osc?.('sine',a.midi?.(38)??73,t+.045,.16,.012+s*.01,a.fx,7,.3);
+      a.osc?.('square',a.midi?.(31)??49,t,.12,.015+s*.012,a.fx,-14,recordPan(base-.16));
+      a.osc?.('sine',a.midi?.(38)??73,t+.045,.16,.012+s*.01,a.fx,7,recordPan(base+.16));
     }else if(kind==='GATE'){
-      a.osc?.('triangle',a.midi?.(43)??98,t,.19,.014+s*.011,a.fx,-18,.25);
-      a.osc?.('triangle',a.midi?.(36)??65,t+.035,.17,.011+s*.009,a.fx,12,-.25);
+      a.osc?.('triangle',a.midi?.(43)??98,t,.19,.014+s*.011,a.fx,-18,recordPan(base+.14));
+      a.osc?.('triangle',a.midi?.(36)??65,t+.035,.17,.011+s*.009,a.fx,12,recordPan(base-.14));
     }else if(kind==='RESONATOR'){
-      a.osc?.('sawtooth',a.midi?.(29)??43,t,.2,.012+s*.012,a.fx,-24,0);
+      a.osc?.('sawtooth',a.midi?.(29)??43,t,.2,.012+s*.012,a.fx,-24,recordPan(base));
       a.riserTick?.(t,.025+s*.025);
     }else{
-      const root=34-Math.round(s*7);a.osc?.('sawtooth',a.midi?.(root)??55,t,.1+s*.08,.008+s*.012,a.fx,-20,0);
+      const root=34-Math.round(s*7);a.osc?.('sawtooth',a.midi?.(root)??55,t,.1+s*.08,.008+s*.012,a.fx,-20,recordPan(base));
     }
+  };
+
+  const bossAttackCue=(tag,cfg={})=>{
+    const a=game.audio;if(!a?.ctx||a.ctx.state==='suspended')return 0;
+    const role=ROLE_FOR_TAG[tag],rawPan=Number.isFinite(cfg.x)?((cfg.x-(game.camera?.position?.x||0))/7):rolePan(role),pan=recordPan(rawPan),t=a.ctx.currentTime+.006;
+    state.attackCues++;
+    if(tag==='twin-cut'){
+      a.osc?.('square',a.midi?.(50)??146.8,t,.055,.0065,a.fx,-7,pan);
+      a.osc?.('sine',a.midi?.(57)??220,t+.028,.07,.0045,a.fx,4,clamp(pan*.82,-.8,.8));
+    }else if(tag==='shift-gate'){
+      a.osc?.('triangle',a.midi?.(45)??110,t,.085,.0065,a.fx,-9,pan);
+      a.osc?.('triangle',a.midi?.(52)??164.8,t+.032,.07,.004,a.fx,6,clamp(pan*.78,-.8,.8));
+    }else{
+      a.osc?.('sawtooth',a.midi?.(40)??82.4,t,.095,.0055,a.fx,-15,pan);
+      a.osc?.('sine',a.midi?.(47)??123.5,t+.04,.09,.004,a.fx,0,clamp(pan*.7,-.8,.8));
+    }
+    return pan;
   };
 
   const shouldRoleMisfire=(tag,broken,damage)=>{
@@ -95,8 +121,9 @@ async function init(){
       state.widened++;
     }
 
-    const enemy=baseSpawnThreat(gameArg,next);
+    const cuePan=bossAttackCue(cfg.tag,next),enemy=baseSpawnThreat(gameArg,next);
     if(enemy){
+      enemy.__bossSpatialPan=cuePan;
       if(broken.GATE>0)enemy.threatImpactRadius=Math.max(.68,(enemy.threatImpactRadius||1.04)-broken.GATE*.11);
       if(broken.RESONATOR>0){enemy.speed*=1-broken.RESONATOR*.09;state.slowed++;}
       if(damage>.58){
@@ -148,8 +175,8 @@ async function init(){
   };tick();
 
   window.__pulseBossConsequences={
-    state,brokenCounts,stabilityFor,
-    stats:()=>({patched:!!state.boss,broken:brokenCounts(),suppressed:state.suppressed,roleSuppressed:{...state.roleSuppressed},widened:state.widened,slowed:state.slowed,misfires:state.misfires,audioCues:state.audioCues,stability:Number(state.stability.toFixed(3)),corePressurePaused:!!vulnerability.state.exposed,patterns:bossDirector.stats().lastPattern,normal:state.fracture?.mat?.blending===THREE.NormalBlending})
+    state,brokenCounts,stabilityFor,rolePan,bossAttackCue,
+    stats:()=>({patched:!!state.boss,broken:brokenCounts(),suppressed:state.suppressed,roleSuppressed:{...state.roleSuppressed},widened:state.widened,slowed:state.slowed,misfires:state.misfires,audioCues:state.audioCues,attackCues:state.attackCues,spatialCues:state.spatialCues,lastPan:Number(state.lastPan.toFixed(3)),panRange:state.spatialCues?Number((state.maxPan-state.minPan).toFixed(3)):0,stability:Number(state.stability.toFixed(3)),corePressurePaused:!!vulnerability.state.exposed,patterns:bossDirector.stats().lastPattern,normal:state.fracture?.mat?.blending===THREE.NormalBlending})
   };
 }
 
