@@ -66,8 +66,9 @@ waitFor().then(game=>{
   function begin(detail={}){
     const area=clamp((detail.area||1)-1,0,4),strong=!!detail.strong,members=chooseFormation(area);if(!members.length)return false;
     const entries=members.map(enemy=>({enemy,model:enemy.__fusionModel,applied:{x:0,y:0,z:0,rx:0,ry:0,rz:0}}));
-    const reaction={area,strong,kind:detail.kind||strong?'break':'cut',name:detail.name||REPLIES[area][strong?'strong':'weak'],entries,voice:1,start:performance.now()/1000,releasing:false,releaseStart:0,peak:0};
-    active.push(reaction);state.begun++;state[strong?'strong':'weak']++;state.lastArea=area+1;state.lastName=reaction.name;state.lastKind=strong?'break':'cut';state.lastMembers=entries.length;state.lastVoice=1;
+    const kind=detail.kind||(strong?'break':'cut');
+    const reaction={area,strong,kind,name:detail.name||REPLIES[area][strong?'strong':'weak'],entries,voice:1,start:performance.now()/1000,releasing:false,releaseStart:0,peak:0};
+    active.push(reaction);state.begun++;state[strong?'strong':'weak']++;state.lastArea=area+1;state.lastName=reaction.name;state.lastKind=kind;state.lastMembers=entries.length;state.lastVoice=1;
     window.__pulseRailCamera?.frameEncounter?.(members.slice(0,mobile()?4:6));
     return true;
   }
