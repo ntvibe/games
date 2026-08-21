@@ -1,0 +1,78 @@
+name: Pulse Ascent command impact check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-command-impact-check.yml'
+  workflow_dispatch:
+jobs:
+  command-impact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax and integration
+        run: |
+          node --check --input-type=module < pulse-ascent/command-exposure-impact.js
+          grep -q "command-exposure-impact.js" pulse-ascent/phrase-tactical-opening.js
+          grep -q "__pulseCommandExposureImpact" pulse-ascent/command-exposure-impact.js
+          grep -q "pulse:command-exposure-impact" pulse-ascent/command-exposure-impact.js
+          grep -q "NormalBlending" pulse-ascent/command-exposure-impact.js
+          grep -q "pulse-ascent-v64" pulse-ascent/service-worker.js
+          grep -q "command-exposure-impact.js" pulse-ascent/service-worker.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise weapon-specific exposed-core reactions
+        run: |
+          cat >/tmp/command-impact.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-command-impact';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseCommandExposureVisual&&window.__pulseCommandExposureImpact,{timeout:25000});
+          await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=2;g.bar=24;g.boss=null;
+            const leader=g.spawnEnemy('sentinel',new THREE.Vector3(0,.2,-18),0),wing=g.spawnEnemy('prism',new THREE.Vector3(3,-.4,-21),.4);await new Promise(r=>setTimeout(r,900));
+            leader.hp=20;leader.__formationId=991;leader.__formationVoice=0;wing.__formationId=991;wing.__formationVoice=1;dispatchEvent(new CustomEvent('pulse:enemy-phrase-memory-begin',{detail:{area:2,name:'MIRROR ANSWER',strong:true}}));
+          });
+          await page.waitForTimeout(320);
+          const lance=await page.evaluate(()=>{const l=window.__pulseAscent.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0);l.__hitFeedbackCtx={weapon:'lance',q:.96,at:performance.now(),index:0,total:1};l.hit(.2);return window.__pulseCommandExposureImpact.stats();});
+          await page.waitForTimeout(55);
+          const lanceVisual=await page.evaluate(()=>window.__pulseAscent.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0)?.__commandExposureImpact||null);
+          if(lance.lance<1||!lanceVisual||lanceVisual.lance<=.15)throw new Error(`LANCE breach reaction missing: ${JSON.stringify({lance,lanceVisual})}`);
+          await page.screenshot({path:`${out}/lance-breach-mobile.png`,fullPage:true});
+          const swarm=await page.evaluate(()=>{const l=window.__pulseAscent.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0);l.__hitFeedbackCtx={weapon:'swarm',q:.82,at:performance.now(),index:2,total:4};l.hit(.2);return window.__pulseCommandExposureImpact.stats();});
+          await page.waitForTimeout(55);
+          const swarmVisual=await page.evaluate(()=>window.__pulseAscent.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0)?.__commandExposureImpact||null);
+          if(swarm.swarm<1||!swarmVisual||Math.max(...swarmVisual.plates)<=.12)throw new Error(`SWARM plate destabilization missing: ${JSON.stringify({swarm,swarmVisual})}`);
+          await page.screenshot({path:`${out}/swarm-fracture-mobile.png`,fullPage:true});
+          const lock=await page.evaluate(()=>{const l=window.__pulseAscent.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0);l.hp=.1;l.__hitFeedbackCtx={weapon:'lock',q:.98,at:performance.now(),index:0,total:6};l.hit(1);return{stats:window.__pulseCommandExposureImpact.stats(),finish:window.__pulseAscent.scene.children.some(o=>o.name==='command-exposure-lock-finish')};});
+          if(lock.stats.perfectLock<1||lock.stats.kills<1||!lock.finish||!lock.stats.normalBlending)throw new Error(`Perfect LOCK collapse missing: ${JSON.stringify(lock)}`);
+          await page.screenshot({path:`${out}/perfect-lock-collapse-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({lance,lanceVisual,swarm,swarmVisual,lock,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));console.log(JSON.stringify({lance,lanceVisual,swarm,swarmVisual,lock},null,2));
+          NODE
+          node /tmp/command-impact.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-command-impact
+          path: pulse-ascent-command-impact/
+          if-no-files-found: warn
+          retention-days: 7
