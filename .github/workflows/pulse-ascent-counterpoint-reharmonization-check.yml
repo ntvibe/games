@@ -17,12 +17,18 @@ jobs:
       - name: Check syntax and integration
         run: |
           node --check --input-type=module < pulse-ascent/counterpoint-reharmonization.js
+          node --check --input-type=module < pulse-ascent/formation-reharmonization-visual.js
+          grep -q "formation-reharmonization-visual.js" pulse-ascent/counterpoint-reharmonization.js
           grep -q "counterpoint-reharmonization.js" pulse-ascent/flow-combat-execution.js
           grep -q "counterpoint-reharmonization.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v56" pulse-ascent/service-worker.js
+          grep -q "formation-reharmonization-visual.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v57" pulse-ascent/service-worker.js
           grep -q "MIRROR INVERSION" pulse-ascent/counterpoint-reharmonization.js
           grep -q "CHOIR RESOLVE" pulse-ascent/counterpoint-reharmonization.js
+          grep -q "BRANCH VARIATION" pulse-ascent/formation-reharmonization-visual.js
+          grep -q "choir pods settle" pulse-ascent/formation-reharmonization-visual.js
           grep -q "pulse:enemy-phrase-reharmonized" pulse-ascent/counterpoint-reharmonization.js
+          grep -q "__pulseFormationReharmonizationVisual" pulse-ascent/formation-reharmonization-visual.js
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -32,7 +38,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
           sleep 2
-      - name: Exercise Area-specific counterpoint resolution
+      - name: Exercise Area-specific audiovisual counterpoint resolution
         run: |
           cat >/tmp/reharmonization.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -46,7 +52,20 @@ jobs:
           page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
           page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseCounterpointReharmonization&&window.__pulsePlayerCounterpoint,{timeout:25000});
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseCounterpointReharmonization&&window.__pulseFormationReharmonizationVisual&&window.__pulseModelFusion?.ready,{timeout:30000});
+
+          const glassSetup=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent;
+            window.__pulseCampaign.state.selected=2;
+            const specs=[['sentinel',-3.6,1.1],['prism',-1.2,-.1],['prism',1.2,-.1],['sentinel',3.6,1.1]];
+            const made=specs.map(([type,x,y],i)=>g.spawnEnemy(type,new THREE.Vector3(x,y,-16-i*.45),i*.17));
+            made.forEach(e=>{if(e)e.__formationId=777;});
+            window.__reharmGlass=made.filter(Boolean);
+            return {made:window.__reharmGlass.length};
+          });
+          if(glassSetup.made<4)throw new Error(`Could not create Glass formation: ${JSON.stringify(glassSetup)}`);
+          await page.waitForFunction(()=>window.__reharmGlass?.every(e=>e.__fusionModel?.userData?.areaIndex===1&&e.__motionRig),{timeout:15000});
+
           const glass=await page.evaluate(()=>{
             const g=window.__pulseAscent,before=g.enemies.filter(e=>e.type==='danger'&&!e.dead).length;
             let event=null;addEventListener('pulse:enemy-phrase-reharmonized',e=>event=e.detail,{once:true});
@@ -55,18 +74,37 @@ jobs:
           });
           if(!glass.ok||glass.stats.lastName!=='MIRROR INVERSION'||!glass.stats.lastStrong||glass.stats.lastNotes<3)throw new Error(`Glass reharmonization invalid: ${JSON.stringify(glass)}`);
           if(glass.after!==glass.before)throw new Error(`Reharmonization changed danger count: ${JSON.stringify(glass)}`);
-          await page.waitForTimeout(160);await page.screenshot({path:`${out}/mirror-inversion-mobile.png`,fullPage:true});
+          await page.waitForTimeout(220);
+          const glassVisual=await page.evaluate(()=>window.__pulseFormationReharmonizationVisual.stats());
+          if(glassVisual.lastArea!==2||glassVisual.lastName!=='MIRROR INVERSION'||glassVisual.lastFormationSize<4||glassVisual.lastAppliedModules<8||glassVisual.lastPeakDisplacement<.012||glassVisual.active<1)throw new Error(`Glass formation did not visibly invert: ${JSON.stringify(glassVisual)}`);
+          await page.screenshot({path:`${out}/mirror-inversion-formation-mobile.png`,fullPage:true});
+          await page.waitForTimeout(850);
+          const glassSettled=await page.evaluate(()=>window.__pulseFormationReharmonizationVisual.stats());
+          if(glassSettled.active!==0)throw new Error(`Glass formation overlay failed to settle: ${JSON.stringify(glassSettled)}`);
 
+          const cathedralSetup=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent;
+            window.__pulseCampaign.state.selected=5;
+            const made=[-3,-1,1,3].map((x,i)=>g.spawnEnemy(i%2?'node':'sentinel',new THREE.Vector3(x,.55+(i%2)*.7,-18-i*.4),.3+i*.19));
+            made.forEach(e=>{if(e)e.__formationId=888;});window.__reharmCathedral=made.filter(Boolean);
+            return{made:window.__reharmCathedral.length};
+          });
+          if(cathedralSetup.made<4)throw new Error(`Could not create Cathedral formation: ${JSON.stringify(cathedralSetup)}`);
+          await page.waitForFunction(()=>window.__reharmCathedral?.every(e=>e.__fusionModel?.userData?.areaIndex===4&&e.__motionRig),{timeout:15000});
           const cathedral=await page.evaluate(()=>{
             let event=null;addEventListener('pulse:enemy-phrase-reharmonized',e=>event=e.detail,{once:true});
-            window.__pulseCounterpointReharmonization.react({area:5,name:'SERAPH PHRASE',strong:true,count:6,quality:.99});
-            return{event,stats:window.__pulseCounterpointReharmonization.stats()};
+            const ok=window.__pulseCounterpointReharmonization.react({area:5,name:'SERAPH PHRASE',strong:true,count:6,quality:.99});
+            return{ok,event,stats:window.__pulseCounterpointReharmonization.stats()};
           });
-          if(cathedral.stats.lastName!=='CHOIR RESOLVE'||cathedral.stats.lastArea!==5||cathedral.stats.strong<2)throw new Error(`Cathedral reharmonization invalid: ${JSON.stringify(cathedral)}`);
-          await page.waitForTimeout(190);await page.screenshot({path:`${out}/choir-resolve-mobile.png`,fullPage:true});
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({glass,cathedral,errors},null,2));
+          if(!cathedral.ok||cathedral.stats.lastName!=='CHOIR RESOLVE'||cathedral.stats.lastArea!==5||cathedral.stats.strong<2)throw new Error(`Cathedral reharmonization invalid: ${JSON.stringify(cathedral)}`);
+          await page.waitForTimeout(230);
+          const cathedralVisual=await page.evaluate(()=>window.__pulseFormationReharmonizationVisual.stats());
+          if(cathedralVisual.lastArea!==5||cathedralVisual.lastName!=='CHOIR RESOLVE'||cathedralVisual.lastFormationSize<4||cathedralVisual.active<1)throw new Error(`Cathedral formation did not resolve visually: ${JSON.stringify(cathedralVisual)}`);
+          await page.screenshot({path:`${out}/choir-resolve-formation-mobile.png`,fullPage:true});
+
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({glass,glassVisual,glassSettled,cathedral,cathedralVisual,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));
-          console.log(JSON.stringify({glass,cathedral},null,2));
+          console.log(JSON.stringify({glass,glassVisual,glassSettled,cathedral,cathedralVisual},null,2));
           NODE
           node /tmp/reharmonization.mjs
       - name: Upload evidence
