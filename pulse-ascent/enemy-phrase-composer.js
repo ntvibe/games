@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './phrase-memory.js';
 import './phrase-memory-feedback.js';
+import './phrase-memory-formation-response.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const waitFor=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent&&window.__pulseAreaEnemyAttacks&&window.__pulseEnemyAttackAnticipation&&window.__pulsePhraseMemory?resolve(window.__pulseAscent):requestAnimationFrame(tick);tick();});
