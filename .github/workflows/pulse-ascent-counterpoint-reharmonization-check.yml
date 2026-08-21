@@ -1,0 +1,79 @@
+name: Pulse Ascent counterpoint reharmonization check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-counterpoint-reharmonization-check.yml'
+  workflow_dispatch:
+jobs:
+  reharmonization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax and integration
+        run: |
+          node --check --input-type=module < pulse-ascent/counterpoint-reharmonization.js
+          grep -q "counterpoint-reharmonization.js" pulse-ascent/flow-combat-execution.js
+          grep -q "counterpoint-reharmonization.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v56" pulse-ascent/service-worker.js
+          grep -q "MIRROR INVERSION" pulse-ascent/counterpoint-reharmonization.js
+          grep -q "CHOIR RESOLVE" pulse-ascent/counterpoint-reharmonization.js
+          grep -q "pulse:enemy-phrase-reharmonized" pulse-ascent/counterpoint-reharmonization.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise Area-specific counterpoint resolution
+        run: |
+          cat >/tmp/reharmonization.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-counterpoint-reharmonization';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage();const errors=[];
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseCounterpointReharmonization&&window.__pulsePlayerCounterpoint,{timeout:25000});
+          const glass=await page.evaluate(()=>{
+            const g=window.__pulseAscent,before=g.enemies.filter(e=>e.type==='danger'&&!e.dead).length;
+            let event=null;addEventListener('pulse:enemy-phrase-reharmonized',e=>event=e.detail,{once:true});
+            const ok=window.__pulseCounterpointReharmonization.react({area:2,name:'MIRROR PHRASE',strong:true,count:4,quality:.97});
+            return{ok,before,after:g.enemies.filter(e=>e.type==='danger'&&!e.dead).length,event,stats:window.__pulseCounterpointReharmonization.stats()};
+          });
+          if(!glass.ok||glass.stats.lastName!=='MIRROR INVERSION'||!glass.stats.lastStrong||glass.stats.lastNotes<3)throw new Error(`Glass reharmonization invalid: ${JSON.stringify(glass)}`);
+          if(glass.after!==glass.before)throw new Error(`Reharmonization changed danger count: ${JSON.stringify(glass)}`);
+          await page.waitForTimeout(160);await page.screenshot({path:`${out}/mirror-inversion-mobile.png`,fullPage:true});
+
+          const cathedral=await page.evaluate(()=>{
+            let event=null;addEventListener('pulse:enemy-phrase-reharmonized',e=>event=e.detail,{once:true});
+            window.__pulseCounterpointReharmonization.react({area:5,name:'SERAPH PHRASE',strong:true,count:6,quality:.99});
+            return{event,stats:window.__pulseCounterpointReharmonization.stats()};
+          });
+          if(cathedral.stats.lastName!=='CHOIR RESOLVE'||cathedral.stats.lastArea!==5||cathedral.stats.strong<2)throw new Error(`Cathedral reharmonization invalid: ${JSON.stringify(cathedral)}`);
+          await page.waitForTimeout(190);await page.screenshot({path:`${out}/choir-resolve-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({glass,cathedral,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({glass,cathedral},null,2));
+          NODE
+          node /tmp/reharmonization.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-counterpoint-reharmonization
+          path: pulse-ascent-counterpoint-reharmonization/
+          if-no-files-found: warn
+          retention-days: 7
