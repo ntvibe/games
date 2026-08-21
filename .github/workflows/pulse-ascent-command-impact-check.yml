@@ -19,6 +19,7 @@ jobs:
           node --check --input-type=module < pulse-ascent/command-exposure-impact.js
           node --check --input-type=module < pulse-ascent/formation-combat-state.js
           node --check --input-type=module < pulse-ascent/formation-consequence-director.js
+          node --check --input-type=module < pulse-ascent/formation-weapon-scar-visual.js
           grep -q "command-exposure-impact.js" pulse-ascent/phrase-tactical-opening.js
           grep -q "__pulseCommandExposureImpact" pulse-ascent/command-exposure-impact.js
           grep -q "pulse:command-exposure-impact" pulse-ascent/command-exposure-impact.js
@@ -27,8 +28,15 @@ jobs:
           grep -q "VOICE FRACTURE" pulse-ascent/formation-combat-state.js
           grep -q "SYNC COLLAPSE" pulse-ascent/formation-combat-state.js
           grep -q "pulse:formation-weapon-scar" pulse-ascent/formation-consequence-director.js
-          grep -q "pulse-ascent-v65" pulse-ascent/service-worker.js
+          grep -q "formation-weapon-scar-visual.js" pulse-ascent/formation-consequence-director.js
+          grep -q "__pulseFormationWeaponScarVisual" pulse-ascent/formation-weapon-scar-visual.js
+          grep -q "COMMAND BREACH" pulse-ascent/formation-weapon-scar-visual.js
+          grep -q "VOICE FRACTURE" pulse-ascent/formation-weapon-scar-visual.js
+          grep -q "SYNC COLLAPSE" pulse-ascent/formation-weapon-scar-visual.js
+          grep -q "NormalBlending" pulse-ascent/formation-weapon-scar-visual.js
+          grep -q "pulse-ascent-v66" pulse-ascent/service-worker.js
           grep -q "command-exposure-impact.js" pulse-ascent/service-worker.js
+          grep -q "formation-weapon-scar-visual.js" pulse-ascent/service-worker.js
       - name: Install Playwright
         run: |
           npm init -y >/dev/null 2>&1
@@ -50,7 +58,7 @@ jobs:
           const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
           const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseCommandExposureVisual&&window.__pulseCommandExposureImpact&&window.__pulseFormationCombatState&&window.__pulseFormationConsequence,{timeout:25000});
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseCommandExposureVisual&&window.__pulseCommandExposureImpact&&window.__pulseFormationCombatState&&window.__pulseFormationConsequence&&window.__pulseFormationWeaponScarVisual,{timeout:25000});
           const scarUnit=await page.evaluate(()=>{
             const f=window.__pulseFormationCombatState;
             const src={__formationId:7001,__formationVoice:0};f.markRegroup(7001,1,{weapon:'lance',voice:0});const lance=f.adjustThreat(src,{speed:24,targetX:0});
@@ -77,12 +85,16 @@ jobs:
           const swarmVisual=await page.evaluate(()=>window.__pulseAscent.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0)?.__commandExposureImpact||null);
           if(swarm.swarm<1||!swarmVisual||Math.max(...swarmVisual.plates)<=.12)throw new Error(`SWARM plate destabilization missing: ${JSON.stringify({swarm,swarmVisual})}`);
           await page.screenshot({path:`${out}/swarm-fracture-mobile.png`,fullPage:true});
-          const lock=await page.evaluate(()=>{const g=window.__pulseAscent,l=g.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0);l.hp=.1;l.__hitFeedbackCtx={weapon:'lock',q:.98,at:performance.now(),index:0,total:6};l.hit(1);window.__pulseFormationConsequence.processStep(((g.audio.step||0)+3)&~3);const successor=g.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0&&!e.dead);const scar=successor?window.__pulseFormationCombatState.adjustThreat(successor,{speed:24,targetX:0}):null;return{stats:window.__pulseCommandExposureImpact.stats(),finish:g.scene.children.some(o=>o.name==='command-exposure-lock-finish'),consequence:window.__pulseFormationConsequence.stats(),scar,successorScar:successor?.__commandWeaponScar||null};});
+          const lock=await page.evaluate(()=>{const g=window.__pulseAscent,l=g.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0);l.hp=.1;l.__hitFeedbackCtx={weapon:'lock',q:.98,at:performance.now(),index:0,total:6};l.hit(1);window.__pulseFormationConsequence.processStep(((g.audio.step||0)+3)&~3);const successor=g.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0&&!e.dead);const scar=successor?window.__pulseFormationCombatState.adjustThreat(successor,{speed:24,targetX:0}):null;return{stats:window.__pulseCommandExposureImpact.stats(),finish:g.scene.children.some(o=>o.name==='command-exposure-lock-finish'),consequence:window.__pulseFormationConsequence.stats(),scar,successorScar:successor?.__commandWeaponScar||null,successorType:successor?.type||''};});
           if(lock.stats.perfectLock<1||lock.stats.kills<1||!lock.finish||!lock.stats.normalBlending)throw new Error(`Perfect LOCK collapse missing: ${JSON.stringify(lock)}`);
           if(lock.consequence.lastScar!=='SYNC COLLAPSE'||lock.consequence.weaponScars<1||lock.scar?.weaponScar!=='SYNC COLLAPSE'||!lock.successorScar)throw new Error(`Exposed LOCK aftermath missing: ${JSON.stringify(lock)}`);
-          await page.screenshot({path:`${out}/perfect-lock-collapse-mobile.png`,fullPage:true});
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({scarUnit,lance,lanceVisual,swarm,swarmVisual,lock,errors},null,2));
-          await browser.close();if(errors.length)throw new Error(errors.join('\n'));console.log(JSON.stringify({scarUnit,lance,lanceVisual,swarm,swarmVisual,lock},null,2));
+          await page.waitForTimeout(240);
+          const successorVisual=await page.evaluate(()=>{const s=window.__pulseAscent.enemies.find(e=>e.__formationId===991&&e.__formationVoice===0&&!e.dead);return{visual:s?.__formationWeaponScarVisual||null,stats:window.__pulseFormationWeaponScarVisual.stats()};});
+          if(!successorVisual.visual||successorVisual.visual.weapon!=='lock'||successorVisual.visual.name!=='SYNC COLLAPSE'||successorVisual.visual.strength<=.2||successorVisual.visual.modules<1)throw new Error(`Persistent successor scar visual missing: ${JSON.stringify(successorVisual)}`);
+          if(!successorVisual.visual.normalBlending||!successorVisual.stats.normalBlending||successorVisual.stats.active<1)throw new Error(`Successor scar blending/runtime invalid: ${JSON.stringify(successorVisual)}`);
+          await page.screenshot({path:`${out}/successor-sync-collapse-mobile.png`,fullPage:true});
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({scarUnit,lance,lanceVisual,swarm,swarmVisual,lock,successorVisual,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));console.log(JSON.stringify({scarUnit,lance,lanceVisual,swarm,swarmVisual,lock,successorVisual},null,2));
           NODE
           node /tmp/command-impact.mjs
       - name: Upload evidence
