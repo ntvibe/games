@@ -1,4 +1,5 @@
 import './command-exposure-visual.js';
+import './command-exposure-impact.js';
 
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||!!window.__pulseSettings?.state?.comfort;
