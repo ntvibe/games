@@ -1,3 +1,5 @@
+import './command-exposure-visual.js';
+
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches||!!window.__pulseSettings?.state?.comfort;
 const waitFor=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent&&window.__pulsePhraseMemoryFormationResponse?resolve(window.__pulseAscent):requestAnimationFrame(tick);tick();});
@@ -24,7 +26,7 @@ waitFor().then(game=>{
     if(strong){leader.__phraseExposure={name:d.name||'',expires:entry.start+duration,multiplier:1.35};state.strong++;game.showCallout?.('COUNTERPOINT OPENING // COMMAND EXPOSED',.78);}
     else{for(const m of members)if(m!==leader)m.__phraseChaos={name:d.name||'',expires:entry.start+duration};state.weak++;}
     state.opened++;state.lastName=d.name||'';state.lastLeader=leader.type||'';
-    window.__pulseFormationLeaderReadability?.refresh?.();
+    window.__pulseFormationLeaderReadability?.refresh?.();window.__pulseCommandExposureVisual?.refresh?.();
   });
   addEventListener('pulse:enemy-phrase-memory-end',e=>{
     const area=clamp((e.detail?.area||1)-1,0,4);for(const [id,s] of [...state.active])if(s.area===area&&performance.now()>s.start+240)clear(id);
