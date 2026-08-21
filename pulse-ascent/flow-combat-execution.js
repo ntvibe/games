@@ -72,3 +72,4 @@ waitFor().then(game=>{
 });
 
 import('./enemy-attack-anticipation.js').catch(()=>{});
+import('./enemy-phrase-composer.js').catch(()=>{});
