@@ -1,3 +1,5 @@
+import './formation-reharmonization-visual.js';
+
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const waitFor=()=>new Promise(resolve=>{const tick=()=>window.__pulseAscent&&window.__pulsePlayerCounterpoint&&window.__pulseEnemyPhraseComposer?resolve(window.__pulseAscent):requestAnimationFrame(tick);tick();});
 
@@ -37,11 +39,9 @@ waitFor().then(game=>{
     }
 
     if(area===1&&strong){
-      // Glass Temple answers a broken mirror phrase with a consonant stereo inversion.
       scheduleTone(audio,'triangle',root+24,at+step*.5,step*1.4,.0075,-.58);
       scheduleTone(audio,'triangle',root+19,at+step*.5,step*1.4,.0075,.58);
     }else if(area===4&&strong){
-      // Neural Cathedral resolves the interrupted combat chord into a stable choir cadence.
       [0,7,12].forEach((n,i)=>scheduleTone(audio,i?'sine':'triangle',root+12+n,at+step*.75,step*2.1,.0068,(i-1)*.42));
     }
 
