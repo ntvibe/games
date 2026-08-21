@@ -18,18 +18,24 @@ jobs:
         run: |
           node --check --input-type=module < pulse-ascent/phrase-memory.js
           node --check --input-type=module < pulse-ascent/phrase-memory-feedback.js
+          node --check --input-type=module < pulse-ascent/phrase-memory-formation-response.js
           node --check --input-type=module < pulse-ascent/enemy-phrase-composer.js
           grep -q "phrase-memory.js" pulse-ascent/enemy-phrase-composer.js
           grep -q "phrase-memory-feedback.js" pulse-ascent/enemy-phrase-composer.js
+          grep -q "phrase-memory-formation-response.js" pulse-ascent/enemy-phrase-composer.js
           grep -q "phrase-memory.js" pulse-ascent/service-worker.js
           grep -q "phrase-memory-feedback.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v60" pulse-ascent/service-worker.js
+          grep -q "phrase-memory-formation-response.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v61" pulse-ascent/service-worker.js
           grep -q "MIRROR SHARD" pulse-ascent/phrase-memory.js
           grep -q "MIRROR ANSWER" pulse-ascent/phrase-memory.js
           grep -q "CHOIR SUSPENSION" pulse-ascent/phrase-memory.js
           grep -q "CHOIR AFTERIMAGE" pulse-ascent/phrase-memory.js
           grep -q "kind:'cut'" pulse-ascent/phrase-memory.js
           grep -q "kind:'break'" pulse-ascent/phrase-memory.js
+          grep -q "MIRROR SHARD" pulse-ascent/phrase-memory-formation-response.js
+          grep -q "MIRROR ANSWER" pulse-ascent/phrase-memory-formation-response.js
+          grep -q "__pulsePhraseMemoryFormationResponse" pulse-ascent/phrase-memory-formation-response.js
           grep -q "NEXT REPLY" pulse-ascent/phrase-memory-feedback.js
           grep -q "ENEMY REPLY" pulse-ascent/phrase-memory-feedback.js
           grep -q "NormalBlending" pulse-ascent/phrase-memory-feedback.js
@@ -44,7 +50,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
           sleep 2
-      - name: Exercise branched phrase mutation and player feedback
+      - name: Exercise branched phrase mutation, formation motion and player feedback
         run: |
           cat >/tmp/phrase-memory.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -58,16 +64,34 @@ jobs:
           page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
           page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
           await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
-          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseEnemyPhraseComposer&&window.__pulsePhraseMemory&&window.__pulsePhraseMemoryFeedback,{timeout:25000});
-          const setup=await page.evaluate(async()=>{
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseEnemyPhraseComposer&&window.__pulsePhraseMemory&&window.__pulsePhraseMemoryFeedback&&window.__pulsePhraseMemoryFormationResponse,{timeout:25000});
+          await page.evaluate(async()=>{
             const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
             g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
-            g.spawnEnemy('sentinel',new THREE.Vector3(-3,.4,-21),0);g.spawnEnemy('sentinel',new THREE.Vector3(3,-.3,-22),.4);
-            await new Promise(r=>setTimeout(r,700));
+            const a=g.spawnEnemy('sentinel',new THREE.Vector3(-3,.4,-21),0),b=g.spawnEnemy('sentinel',new THREE.Vector3(3,-.3,-22),.4);
+            await new Promise(r=>setTimeout(r,800));
+            if(a)a.__formationId=701;if(b)b.__formationId=701;
+          });
+          const weakMotion=await page.evaluate(async()=>{
+            const pm=window.__pulsePhraseMemory;pm.clear();pm.arm({area:2,name:'MIRROR INVERSION',strong:false});pm.begin(1);await new Promise(r=>setTimeout(r,260));
+            const result={memory:pm.stats(),motion:window.__pulsePhraseMemoryFormationResponse.stats()};pm.end(1);return result;
+          });
+          if(weakMotion.motion.weak<1||weakMotion.motion.lastName!=='MIRROR SHARD'||weakMotion.motion.lastKind!=='cut'||weakMotion.motion.lastPeak<=.01)throw new Error(`Weak formation response missing: ${JSON.stringify(weakMotion)}`);
+          await page.screenshot({path:`${out}/mirror-shard-formation-mobile.png`,fullPage:true});
+          await page.waitForTimeout(450);
+          const strongMotion=await page.evaluate(async()=>{
+            const pm=window.__pulsePhraseMemory;pm.arm({area:2,name:'MIRROR INVERSION',strong:true});pm.begin(1);await new Promise(r=>setTimeout(r,300));
+            const result={memory:pm.stats(),motion:window.__pulsePhraseMemoryFormationResponse.stats()};pm.end(1);return result;
+          });
+          if(strongMotion.motion.strong<1||strongMotion.motion.lastName!=='MIRROR ANSWER'||strongMotion.motion.lastKind!=='break'||strongMotion.motion.lastPeak<=weakMotion.motion.lastPeak*1.15)throw new Error(`Strong formation response not distinct enough: ${JSON.stringify({weakMotion,strongMotion})}`);
+          await page.screenshot({path:`${out}/mirror-answer-formation-mobile.png`,fullPage:true});
+          await page.waitForTimeout(450);
+          const setup=await page.evaluate(()=>{
+            const pm=window.__pulsePhraseMemory;pm.clear();
             dispatchEvent(new CustomEvent('pulse:enemy-phrase-reharmonized',{detail:{area:2,name:'MIRROR INVERSION',strong:false}}));
-            const weak={memory:window.__pulsePhraseMemory.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};
+            const weak={memory:pm.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};
             dispatchEvent(new CustomEvent('pulse:enemy-phrase-reharmonized',{detail:{area:2,name:'MIRROR INVERSION',strong:true}}));
-            return{weak,memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};
+            return{weak,memory:pm.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};
           });
           if(setup.weak.memory.pending[1]!=='MIRROR SHARD'||setup.weak.memory.lastKind!=='cut'||setup.weak.memory.lastStrong)throw new Error(`Weak Harmonic Cut branch missing: ${JSON.stringify(setup.weak)}`);
           if(setup.memory.pending[1]!=='MIRROR ANSWER'||setup.memory.lastKind!=='break'||!setup.memory.lastStrong)throw new Error(`Strong Counterpoint Break branch missing: ${JSON.stringify(setup)}`);
@@ -75,22 +99,23 @@ jobs:
           const chipBox=await page.locator('#phraseMemoryFeedback').boundingBox();
           if(!chipBox||chipBox.x<0||chipBox.x+chipBox.width>390)throw new Error(`Phrase feedback overflows mobile viewport: ${JSON.stringify(chipBox)}`);
           await page.screenshot({path:`${out}/mirror-answer-armed-mobile.png`,fullPage:true});
-          const call=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(6,g.audio.ctx?.currentTime+.02);return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};});
+          const call=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(6,g.audio.ctx?.currentTime+.02);return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats(),motion:window.__pulsePhraseMemoryFormationResponse.stats()};});
           if(call.memory.active[1]!=='MIRROR ANSWER'||call.phrase.lastMutation!=='MIRROR ANSWER')throw new Error(`Mutation did not begin on next phrase: ${JSON.stringify(call)}`);
           if(call.feedback.mode!=='active'||call.feedback.name!=='MIRROR ANSWER'||call.feedback.voice!==1||call.feedback.markers<1||!call.feedback.normalBlending)throw new Error(`Active reply feedback invalid: ${JSON.stringify(call.feedback)}`);
+          if(call.motion.active<1||call.motion.lastKind!=='break')throw new Error(`Formation reply did not bind to active strong phrase: ${JSON.stringify(call.motion)}`);
           await page.screenshot({path:`${out}/mirror-answer-call-mobile.png`,fullPage:true});
-          const response=await page.evaluate(()=>{const g=window.__pulseAscent;g.enemies.filter(e=>e.type==='danger').forEach(e=>{e.dead=true;e.dispose?.()});g.enemies=g.enemies.filter(e=>!e.dead);g.onStep(10,g.audio.ctx?.currentTime+.02);const threats=g.enemies.filter(e=>e.__enemyPhraseResponse&&!e.dead);return{phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats(),threats:threats.map(e=>({mutation:e.__phraseMutation,targetX:e.threatTargetX,targetY:e.threatTargetY}))};});
+          const response=await page.evaluate(()=>{const g=window.__pulseAscent;g.enemies.filter(e=>e.type==='danger').forEach(e=>{e.dead=true;e.dispose?.()});g.enemies=g.enemies.filter(e=>!e.dead);g.onStep(10,g.audio.ctx?.currentTime+.02);const threats=g.enemies.filter(e=>e.__enemyPhraseResponse&&!e.dead);return{phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats(),motion:window.__pulsePhraseMemoryFormationResponse.stats(),threats:threats.map(e=>({mutation:e.__phraseMutation,targetX:e.threatTargetX,targetY:e.threatTargetY}))};});
           if(!response.threats.length||response.threats.some(t=>t.mutation!=='MIRROR ANSWER'))throw new Error(`Mutated response did not spawn: ${JSON.stringify(response)}`);
-          if(response.feedback.voice!==2)throw new Error(`Reply progress did not advance: ${JSON.stringify(response.feedback)}`);
+          if(response.feedback.voice!==2||response.motion.lastVoice!==2)throw new Error(`Reply progress did not advance: ${JSON.stringify(response)}`);
           await page.screenshot({path:`${out}/mirror-answer-response-mobile.png`,fullPage:true});
-          const end=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(14,g.audio.ctx?.currentTime+.02);return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};});
+          const end=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(14,g.audio.ctx?.currentTime+.02);return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats(),motion:window.__pulsePhraseMemoryFormationResponse.stats()};});
           if(end.memory.active[1]!==''||end.phrase.mutatedPhrases<1)throw new Error(`Mutation did not resolve cleanly: ${JSON.stringify(end)}`);
           await page.waitForTimeout(650);
-          const settled=await page.evaluate(()=>window.__pulsePhraseMemoryFeedback.stats());
-          if(settled.mode!=='idle'||settled.visible||settled.markers!==0)throw new Error(`Phrase feedback did not clear: ${JSON.stringify(settled)}`);
-          fs.writeFileSync(`${out}/state.json`,JSON.stringify({setup,call,response,end,settled,errors},null,2));
+          const settled=await page.evaluate(()=>({feedback:window.__pulsePhraseMemoryFeedback.stats(),motion:window.__pulsePhraseMemoryFormationResponse.stats()}));
+          if(settled.feedback.mode!=='idle'||settled.feedback.visible||settled.feedback.markers!==0||settled.motion.active!==0)throw new Error(`Phrase feedback/motion did not clear: ${JSON.stringify(settled)}`);
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({weakMotion,strongMotion,setup,call,response,end,settled,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));
-          console.log(JSON.stringify({setup,call,response,end,settled},null,2));
+          console.log(JSON.stringify({weakMotion,strongMotion,setup,call,response,end,settled},null,2));
           NODE
           node /tmp/phrase-memory.mjs
       - name: Upload evidence
