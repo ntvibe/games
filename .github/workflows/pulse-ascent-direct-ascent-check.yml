@@ -1,9 +1,5 @@
 name: Pulse Ascent Direct Ascent check
 on:
-  push:
-    paths:
-      - 'pulse-ascent/**'
-      - '.github/workflows/pulse-ascent-direct-ascent-check.yml'
   workflow_dispatch:
 jobs:
   direct-ascent-webgl:
