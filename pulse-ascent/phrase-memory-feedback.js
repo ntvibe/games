@@ -86,9 +86,9 @@ waitFor().then(game=>{
       const ctx=game.audio?.ctx,stepDur=game.audio?.stepDur||.117;
       const phase=ctx?((ctx.currentTime/stepDur)%1):((performance.now()/1000/stepDur)%1);
       const pulse=Math.pow(Math.max(0,Math.cos(phase*Math.PI*2)),8);
-      const base=comfort()?.1:(mobile()?.16:.2);
-      markerMat.opacity=clamp(base+pulse*(state.strong?.17:.1),0,.4);
-      const nextPulse=1+pulse*(comfort()?.008:.025);
+      const base=comfort() ? 0.1 : (mobile() ? 0.16 : 0.2);
+      markerMat.opacity=clamp(base+pulse*(state.strong ? 0.17 : 0.1),0,.4);
+      const nextPulse=1+pulse*(comfort() ? 0.008 : 0.025);
       for(const marker of state.markers){
         const previous=marker.userData.lastPulse||1;marker.scale.multiplyScalar(nextPulse/Math.max(.001,previous));marker.userData.lastPulse=nextPulse;
       }
