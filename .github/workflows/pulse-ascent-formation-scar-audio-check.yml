@@ -23,7 +23,10 @@ jobs:
           grep -q "COMMAND BREACH" pulse-ascent/formation-weapon-scar-audio.js
           grep -q "VOICE FRACTURE" pulse-ascent/formation-weapon-scar-audio.js
           grep -q "SYNC COLLAPSE" pulse-ascent/formation-weapon-scar-audio.js
-          grep -q "pulse-ascent-v67" pulse-ascent/service-worker.js
+          grep -q "formationPan" pulse-ascent/formation-weapon-scar-audio.js
+          grep -q "spatialEvents" pulse-ascent/formation-weapon-scar-audio.js
+          grep -q "createStereoPanner" pulse-ascent/audio.js
+          grep -q "pulse-ascent-v68" pulse-ascent/service-worker.js
           grep -q "formation-weapon-scar-audio.js" pulse-ascent/service-worker.js
       - name: Install Playwright
         run: |
@@ -34,7 +37,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
           sleep 2
-      - name: Exercise musical scar identities
+      - name: Exercise spatial musical scar identities
         run: |
           cat >/tmp/scar-audio.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -49,14 +52,17 @@ jobs:
           await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseFormationWeaponScarAudio&&window.__pulseAreaAudio,{timeout:25000});
           const state=await page.evaluate(()=>{
             const a=window.__pulseFormationWeaponScarAudio,g=window.__pulseAscent;
-            const mk=(id,weapon,voice=2)=>({id,area:1,weapon,successor:{__commandWeaponScar:{weapon,voice,expiresStep:(g.audio.step||0)+16}}});
-            a.arm(mk(7101,'lance'));a.processStep(0,g.audio.ctx.currentTime+.02);a.processStep(8,g.audio.ctx.currentTime+.04);
-            a.arm(mk(7102,'swarm',2));[1,5,9,13].forEach((s,i)=>a.processStep(s,g.audio.ctx.currentTime+.08+i*.02));
-            a.arm(mk(7103,'lock'));[2,6,10,14].forEach((s,i)=>a.processStep(s,g.audio.ctx.currentTime+.18+i*.02));
-            return a.stats();
+            const mk=(id,weapon,voice=2,x=0)=>({id,area:1,weapon,successor:{group:{position:{x}},__commandWeaponScar:{weapon,voice,expiresStep:(g.audio.step||0)+16}}});
+            const left=a.arm(mk(7101,'lance',0,-5.5));a.processStep(0,g.audio.ctx.currentTime+.02);a.processStep(8,g.audio.ctx.currentTime+.04);
+            const right=a.arm(mk(7102,'swarm',2,5.5));[1,5,9,13].forEach((s,i)=>a.processStep(s,g.audio.ctx.currentTime+.08+i*.02));
+            const center=a.arm(mk(7103,'lock',0,0));[2,6,10,14].forEach((s,i)=>a.processStep(s,g.audio.ctx.currentTime+.18+i*.02));
+            return {stats:a.stats(),pans:{left:left.pan,right:right.pan,center:center.pan},stereoPanner:typeof g.audio.ctx.createStereoPanner==='function'};
           });
-          if(state.triggered<3||state.lanceGaps<2||state.swarmVoices<2||state.lockStutters<3)throw new Error(`Musical scar identities missing: ${JSON.stringify(state)}`);
-          if(state.lastName!=='SYNC COLLAPSE')throw new Error(`Unexpected final scar identity: ${JSON.stringify(state)}`);
+          if(state.stats.triggered<3||state.stats.lanceGaps<2||state.stats.swarmVoices<2||state.stats.lockStutters<3)throw new Error(`Musical scar identities missing: ${JSON.stringify(state)}`);
+          if(state.stats.spatialEvents<8)throw new Error(`Spatial events missing: ${JSON.stringify(state)}`);
+          if(!(state.pans.left<-.4&&state.pans.right>.4&&Math.abs(state.pans.center)<.05))throw new Error(`Formation pans not spatialized: ${JSON.stringify(state)}`);
+          if(!state.stereoPanner)throw new Error('StereoPannerNode unavailable in Chromium runtime');
+          if(state.stats.lastName!=='SYNC COLLAPSE')throw new Error(`Unexpected final scar identity: ${JSON.stringify(state)}`);
           await page.screenshot({path:`${out}/scar-audio-runtime-mobile.png`,fullPage:true});
           fs.writeFileSync(`${out}/state.json`,JSON.stringify({state,errors},null,2));
           await browser.close();if(errors.length)throw new Error(errors.join('\n'));console.log(JSON.stringify(state,null,2));
