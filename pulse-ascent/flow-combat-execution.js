@@ -73,4 +73,4 @@ waitFor().then(game=>{
 
 import('./enemy-attack-anticipation.js').catch(()=>{});
 import('./enemy-phrase-composer.js').catch(()=>{});
-import('./player-counterpoint.js').catch(()=>{});
+import('./player-counterpoint.js').then(()=>import('./counterpoint-reharmonization.js')).catch(()=>{});
