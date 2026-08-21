@@ -33,7 +33,13 @@ waitFor().then(game=>{
     const d=e.detail||{};
     if(d.voice===1){state.open=false;state.answered=false;state.armed=false;state.area=d.area||areaIndex()+1;state.name=d.name||'';state.responseStep=-1;state.resolutionStep=RESOLUTION_STEPS[state.area-1]??14;}
     else if(d.voice===2){state.open=true;state.answered=false;state.armed=false;state.area=d.area||areaIndex()+1;state.name=d.name||'';state.responseStep=d.step??-1;state.resolutionStep=RESOLUTION_STEPS[state.area-1]??14;}
-    else if(d.voice===3){state.open=false;state.answered=false;state.armed=false;state.remaining=0;state.blockUntil=0;}
+    else if(d.voice===3){
+      state.open=false;state.answered=false;
+      // Area attacks can schedule sibling resolution shots tens of milliseconds apart.
+      // Keep a strong counter alive until the short resolution window closes so the
+      // whole musical chord is broken rather than only the first synchronous voice.
+      if(performance.now()>=state.blockUntil){state.armed=false;state.remaining=0;state.blockUntil=0;}
+    }
   });
 
   const baseScoreTiming=game.scoreTiming.bind(game);
@@ -61,7 +67,7 @@ waitFor().then(game=>{
     if(state.armed&&state.open&&s===state.resolutionStep){
       state.blockUntil=performance.now()+260;state.remaining=state.strong?12:1;state.lastResult='';
       const result=baseOnStep(step,time);
-      setTimeout(()=>{if(performance.now()>=state.blockUntil){state.remaining=0;state.armed=false;}},275);
+      setTimeout(()=>{if(performance.now()>=state.blockUntil){state.remaining=0;state.armed=false;state.blockUntil=0;}},275);
       return result;
     }
     return baseOnStep(step,time);
