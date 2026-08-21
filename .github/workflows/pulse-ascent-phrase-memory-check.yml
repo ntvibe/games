@@ -1,0 +1,80 @@
+name: Pulse Ascent phrase memory check
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-phrase-memory-check.yml'
+  workflow_dispatch:
+jobs:
+  phrase-memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax and offline integration
+        run: |
+          node --check --input-type=module < pulse-ascent/phrase-memory.js
+          node --check --input-type=module < pulse-ascent/enemy-phrase-composer.js
+          grep -q "phrase-memory.js" pulse-ascent/enemy-phrase-composer.js
+          grep -q "phrase-memory.js" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v58" pulse-ascent/service-worker.js
+          grep -q "MIRROR ANSWER" pulse-ascent/phrase-memory.js
+          grep -q "CHOIR AFTERIMAGE" pulse-ascent/phrase-memory.js
+          grep -q "memory.begin" pulse-ascent/enemy-phrase-composer.js
+          grep -q "__phraseMutation" pulse-ascent/enemy-phrase-composer.js
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
+          sleep 2
+      - name: Exercise persistent phrase mutation
+        run: |
+          cat >/tmp/phrase-memory.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-phrase-memory';fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await ctx.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running&&window.__pulseModelFusion?.ready&&window.__pulseEnemyPhraseComposer&&window.__pulsePhraseMemory,{timeout:25000});
+          const setup=await page.evaluate(async()=>{
+            const THREE=await import('three'),g=window.__pulseAscent,c=window.__pulseCampaign;
+            g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
+            g.spawnEnemy('sentinel',new THREE.Vector3(-3,.4,-21),0);g.spawnEnemy('sentinel',new THREE.Vector3(3,-.3,-22),.4);
+            await new Promise(r=>setTimeout(r,700));
+            dispatchEvent(new CustomEvent('pulse:enemy-phrase-reharmonized',{detail:{area:2,name:'MIRROR INVERSION',strong:true}}));
+            return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats()};
+          });
+          if(setup.memory.pending[1]!=='MIRROR ANSWER')throw new Error(`Mirror mutation not armed: ${JSON.stringify(setup)}`);
+          const call=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(6,g.audio.ctx?.currentTime+.02);return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats()};});
+          if(call.memory.active[1]!=='MIRROR ANSWER'||call.phrase.lastMutation!=='MIRROR ANSWER')throw new Error(`Mutation did not begin on next phrase: ${JSON.stringify(call)}`);
+          const response=await page.evaluate(()=>{const g=window.__pulseAscent;g.enemies.filter(e=>e.type==='danger').forEach(e=>{e.dead=true;e.dispose?.()});g.enemies=g.enemies.filter(e=>!e.dead);g.onStep(10,g.audio.ctx?.currentTime+.02);const threats=g.enemies.filter(e=>e.__enemyPhraseResponse&&!e.dead);return{phrase:window.__pulseEnemyPhraseComposer.stats(),threats:threats.map(e=>({mutation:e.__phraseMutation,targetX:e.threatTargetX,targetY:e.threatTargetY}))};});
+          if(!response.threats.length||response.threats.some(t=>t.mutation!=='MIRROR ANSWER'))throw new Error(`Mutated response did not spawn: ${JSON.stringify(response)}`);
+          await page.screenshot({path:`${out}/mirror-answer-mobile.png`,fullPage:true});
+          const end=await page.evaluate(()=>{const g=window.__pulseAscent;g.onStep(14,g.audio.ctx?.currentTime+.02);return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats()};});
+          if(end.memory.active[1]!==''||end.phrase.mutatedPhrases<1)throw new Error(`Mutation did not resolve cleanly: ${JSON.stringify(end)}`);
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({setup,call,response,end,errors},null,2));
+          await browser.close();if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({setup,call,response,end},null,2));
+          NODE
+          node /tmp/phrase-memory.mjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-phrase-memory
+          path: pulse-ascent-phrase-memory/
+          if-no-files-found: warn
+          retention-days: 7
