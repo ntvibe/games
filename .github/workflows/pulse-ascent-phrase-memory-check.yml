@@ -23,9 +23,13 @@ jobs:
           grep -q "phrase-memory-feedback.js" pulse-ascent/enemy-phrase-composer.js
           grep -q "phrase-memory.js" pulse-ascent/service-worker.js
           grep -q "phrase-memory-feedback.js" pulse-ascent/service-worker.js
-          grep -q "pulse-ascent-v59" pulse-ascent/service-worker.js
+          grep -q "pulse-ascent-v60" pulse-ascent/service-worker.js
+          grep -q "MIRROR SHARD" pulse-ascent/phrase-memory.js
           grep -q "MIRROR ANSWER" pulse-ascent/phrase-memory.js
+          grep -q "CHOIR SUSPENSION" pulse-ascent/phrase-memory.js
           grep -q "CHOIR AFTERIMAGE" pulse-ascent/phrase-memory.js
+          grep -q "kind:'cut'" pulse-ascent/phrase-memory.js
+          grep -q "kind:'break'" pulse-ascent/phrase-memory.js
           grep -q "NEXT REPLY" pulse-ascent/phrase-memory-feedback.js
           grep -q "ENEMY REPLY" pulse-ascent/phrase-memory-feedback.js
           grep -q "NormalBlending" pulse-ascent/phrase-memory-feedback.js
@@ -40,7 +44,7 @@ jobs:
         run: |
           python3 -m http.server 4173 >/tmp/pulse-server.log 2>&1 &
           sleep 2
-      - name: Exercise persistent phrase mutation and player feedback
+      - name: Exercise branched phrase mutation and player feedback
         run: |
           cat >/tmp/phrase-memory.mjs <<'NODE'
           import {createRequire} from 'node:module';
@@ -60,10 +64,13 @@ jobs:
             g.enemies.forEach(e=>e.dispose?.());g.enemies=[];c.state.selected=2;g.section=1;g.bar=20;g.boss=null;
             g.spawnEnemy('sentinel',new THREE.Vector3(-3,.4,-21),0);g.spawnEnemy('sentinel',new THREE.Vector3(3,-.3,-22),.4);
             await new Promise(r=>setTimeout(r,700));
+            dispatchEvent(new CustomEvent('pulse:enemy-phrase-reharmonized',{detail:{area:2,name:'MIRROR INVERSION',strong:false}}));
+            const weak={memory:window.__pulsePhraseMemory.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};
             dispatchEvent(new CustomEvent('pulse:enemy-phrase-reharmonized',{detail:{area:2,name:'MIRROR INVERSION',strong:true}}));
-            return{memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};
+            return{weak,memory:window.__pulsePhraseMemory.stats(),phrase:window.__pulseEnemyPhraseComposer.stats(),feedback:window.__pulsePhraseMemoryFeedback.stats()};
           });
-          if(setup.memory.pending[1]!=='MIRROR ANSWER')throw new Error(`Mirror mutation not armed: ${JSON.stringify(setup)}`);
+          if(setup.weak.memory.pending[1]!=='MIRROR SHARD'||setup.weak.memory.lastKind!=='cut'||setup.weak.memory.lastStrong)throw new Error(`Weak Harmonic Cut branch missing: ${JSON.stringify(setup.weak)}`);
+          if(setup.memory.pending[1]!=='MIRROR ANSWER'||setup.memory.lastKind!=='break'||!setup.memory.lastStrong)throw new Error(`Strong Counterpoint Break branch missing: ${JSON.stringify(setup)}`);
           if(setup.feedback.mode!=='armed'||setup.feedback.name!=='MIRROR ANSWER'||!setup.feedback.visible)throw new Error(`Armed feedback missing: ${JSON.stringify(setup.feedback)}`);
           const chipBox=await page.locator('#phraseMemoryFeedback').boundingBox();
           if(!chipBox||chipBox.x<0||chipBox.x+chipBox.width>390)throw new Error(`Phrase feedback overflows mobile viewport: ${JSON.stringify(chipBox)}`);
