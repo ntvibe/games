@@ -60,7 +60,8 @@ waitFor().then(game=>{
     markerMat.color.set(AREA_COLORS[clamp(state.area-1,0,4)]);
     for(const enemy of members){
       const marker=new THREE.LineLoop(markerGeo,markerMat);marker.name='phrase-memory-marker';marker.renderOrder=20;
-      const scale=enemy.type==='tank'||enemy.type==='sentinel'?1.28:enemy.type==='node'?1.12:.96;marker.scale.setScalar(scale);marker.position.z=.28;enemy.group.add(marker);state.markers.push(marker);
+      const scale=enemy.type==='tank'||enemy.type==='sentinel'?1.28:enemy.type==='node'?1.12:.96;
+      marker.scale.setScalar(scale);marker.userData.lastPulse=1;marker.position.z=.28;enemy.group.add(marker);state.markers.push(marker);
     }
   }
 
@@ -82,10 +83,15 @@ waitFor().then(game=>{
 
   const tick=()=>{
     if(state.mode==='active'&&state.markers.length){
-      const ctx=game.audio?.ctx,stepDur=game.audio?.stepDur||.117,phase=ctx?((ctx.currentTime/stepDur)%1):((performance.now()/1000/stepDur)%1);
-      const pulse=Math.pow(Math.max(0,Math.cos(phase*Math.PI*2)),8),base=comfort()?.1:(mobile()?.16:.2);
+      const ctx=game.audio?.ctx,stepDur=game.audio?.stepDur||.117;
+      const phase=ctx?((ctx.currentTime/stepDur)%1):((performance.now()/1000/stepDur)%1);
+      const pulse=Math.pow(Math.max(0,Math.cos(phase*Math.PI*2)),8);
+      const base=comfort()?.1:(mobile()?.16:.2);
       markerMat.opacity=clamp(base+pulse*(state.strong?.17:.1),0,.4);
-      const s=1+pulse*(comfort()?.008:.025);for(const marker of state.markers)marker.scale.multiplyScalar(s/Math.max(.001,marker.userData.lastPulse||1)),marker.userData.lastPulse=s;
+      const nextPulse=1+pulse*(comfort()?.008:.025);
+      for(const marker of state.markers){
+        const previous=marker.userData.lastPulse||1;marker.scale.multiplyScalar(nextPulse/Math.max(.001,previous));marker.userData.lastPulse=nextPulse;
+      }
     }
     requestAnimationFrame(tick);
   };requestAnimationFrame(tick);
