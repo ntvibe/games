@@ -1,0 +1,58 @@
+name: Pulse Ascent Cinematic Metamorphosis Check
+
+on:
+  push:
+    branches:
+      - 'overnight/**'
+    paths:
+      - 'pulse-ascent/cinematic-metamorphosis-director.js'
+      - 'pulse-ascent/index.html'
+      - '.github/workflows/pulse-ascent-cinematic-metamorphosis-check.yml'
+  workflow_dispatch:
+
+jobs:
+  director-state-machine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify runtime registration
+        run: grep -q 'cinematic-metamorphosis-director.js' pulse-ascent/index.html
+      - name: Exercise deterministic cue envelopes
+        shell: bash
+        run: |
+          cp pulse-ascent/cinematic-metamorphosis-director.js /tmp/cinematic-metamorphosis-director.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const {CinematicMetamorphosisDirector,METAMORPHOSIS_CUES}=await import('file:///tmp/cinematic-metamorphosis-director.mjs');
+
+          assert.deepEqual(Object.keys(METAMORPHOSIS_CUES),['TEMPLE_BLOOM','TIME_FRACTURE','WORLD_ASCENT']);
+          const director=new CinematicMetamorphosisDirector();
+
+          director.trigger('TEMPLE_BLOOM',{reason:'regression'});
+          assert.equal(director.sample().phase,'attack');
+          assert.equal(director.sample().envelope,0);
+          director.onStep(4);
+          assert.equal(director.sample().phase,'hold');
+          assert.equal(director.sample().openness,1);
+          assert.equal(director.sample().fovOffset,5);
+          director.onStep(52);
+          assert.equal(director.sample().phase,'release');
+          director.onStep(64);
+          assert.equal(director.sample().id,null);
+
+          director.trigger('TIME_FRACTURE',{reason:'regression'});
+          director.onStep(68);
+          const fracture=director.sample();
+          assert.equal(fracture.phase,'hold');
+          assert.equal(fracture.timeFeel,.36);
+          assert.equal(fracture.fovOffset,-6);
+
+          const stats=director.snapshot();
+          assert.equal(stats.history.length,2);
+          assert.equal(stats.history[0].id,'TEMPLE_BLOOM');
+          assert.equal(stats.history[1].id,'TIME_FRACTURE');
+          console.log(JSON.stringify(stats,null,2));
+          NODE
