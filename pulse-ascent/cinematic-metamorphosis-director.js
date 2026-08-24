@@ -140,6 +140,7 @@ if(typeof window!=='undefined')waitForGame().then(game=>{
   if(baseSetSection)game.setSection=(index,name)=>{
     const result=baseSetSection(index,name);
     if(index===2&&director.sample().id!=='TEMPLE_BLOOM')director.trigger('TEMPLE_BLOOM',{reason:'sector-vector-temple'});
+    if(index===3&&director.sample().id!=='TIME_FRACTURE')director.trigger('TIME_FRACTURE',{reason:'sector-free-vector-rupture'});
     return result;
   };
 
@@ -161,4 +162,5 @@ if(typeof window!=='undefined')waitForGame().then(game=>{
   };
   window.__pulseMetamorphosisDirector=api;
   import('./temple-bloom-environment.js').catch(error=>console.warn('Temple Bloom environment failed to load',error));
+  import('./time-fracture-perception.js').catch(error=>console.warn('Time Fracture perception failed to load',error));
 });
