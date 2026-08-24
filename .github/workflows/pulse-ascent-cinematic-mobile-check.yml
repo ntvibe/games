@@ -1,0 +1,125 @@
+name: Pulse Ascent cinematic mobile gauntlet
+on:
+  push:
+    paths:
+      - 'pulse-ascent/**'
+      - '.github/workflows/pulse-ascent-cinematic-mobile-check.yml'
+  workflow_dispatch:
+
+jobs:
+  cinematic-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run static server
+        run: |
+          python3 -m http.server 4173 > /tmp/pulse-server.log 2>&1 &
+          echo $! > /tmp/pulse-server.pid
+          sleep 2
+      - name: Capture cinematic mobile states
+        run: |
+          cat > /tmp/pulse-cinematic-mobile.mjs <<'NODE'
+          import {createRequire} from 'node:module';
+          import fs from 'node:fs';
+          const require=createRequire(process.cwd()+'/package.json');
+          const {chromium}=require('playwright');
+          const out='pulse-ascent-cinematic-mobile';
+          fs.mkdirSync(out,{recursive:true});
+          const errors=[];
+          const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+          const page=await context.newPage();
+          page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+          page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+          await page.goto('http://127.0.0.1:4173/pulse-ascent/',{waitUntil:'networkidle'});
+          await page.tap('#startBtn');
+          await page.waitForFunction(()=>window.__pulseAscent?.running===true,{timeout:12000});
+          await page.waitForFunction(()=>window.__pulseTempleBloom&&window.__pulseTimeFracture&&window.__pulseWorldAscent&&window.__pulseMetamorphosisDirector,{timeout:12000});
+          await page.waitForTimeout(700);
+
+          const baseline=await page.evaluate(()=>({
+            viewport:[innerWidth,innerHeight],
+            overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight],
+            fov:window.__pulseAscent.camera.fov,
+            roll:window.__pulseAscent.camera.rotation.z,
+            calls:window.__pulseAscent.renderer.info.render.calls,
+            temple:window.__pulseTempleBloom.stats(),
+            fracture:window.__pulseTimeFracture.stats(),
+            ascent:window.__pulseWorldAscent.stats()
+          }));
+          if(baseline.viewport[0]!==390||baseline.viewport[1]!==844)throw new Error(`Unexpected viewport: ${JSON.stringify(baseline.viewport)}`);
+          if(baseline.overflow[0]>1||baseline.overflow[1]>1)throw new Error(`Baseline overflow: ${JSON.stringify(baseline.overflow)}`);
+          await page.screenshot({path:`${out}/00-baseline-mobile.png`,fullPage:true});
+
+          const temple=await page.evaluate(()=>{
+            window.__pulseTimeFracture.clearPreview();
+            window.__pulseWorldAscent.clearPreview();
+            const s=window.__pulseTempleBloom.preview(.72,.55);
+            const layout=window.__pulseTempleBloom.environment.layout.slice(0,s.pillars);
+            const minAbsX=Math.min(...layout.map(p=>Math.abs(p.x)));
+            return{...s,minAbsX,allOutsideCorridor:layout.every(p=>Math.abs(p.x)>=9.4)};
+          });
+          await page.waitForTimeout(250);
+          const templeRender=await page.evaluate(()=>({calls:window.__pulseAscent.renderer.info.render.calls,overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight]}));
+          if(!temple.visible||temple.pillars>48||temple.lintels>24||temple.gates<3||!temple.allOutsideCorridor||temple.minAbsX<9.4)throw new Error(`Temple mobile readability invalid: ${JSON.stringify(temple)}`);
+          if(templeRender.overflow[0]>1||templeRender.overflow[1]>1)throw new Error(`Temple overflow: ${JSON.stringify(templeRender.overflow)}`);
+          await page.screenshot({path:`${out}/01-temple-bloom-mobile.png`,fullPage:true});
+
+          const fracture=await page.evaluate(()=>{
+            window.__pulseTempleBloom.clearPreview();
+            window.__pulseWorldAscent.clearPreview();
+            return window.__pulseTimeFracture.preview({envelope:1,phase:'hold',timeFeel:.36,beatPulse:.55});
+          });
+          await page.waitForTimeout(250);
+          const fractureRender=await page.evaluate(()=>({fov:window.__pulseAscent.camera.fov,roll:window.__pulseAscent.camera.rotation.z,calls:window.__pulseAscent.renderer.info.render.calls,overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight]}));
+          if(!fracture.visible||fracture.streakCount>64||fracture.streakCount<32||fracture.timeFeel>.37||Math.abs(fracture.fovApplied)>6.25)throw new Error(`Time Fracture mobile invalid: ${JSON.stringify(fracture)}`);
+          if(fractureRender.overflow[0]>1||fractureRender.overflow[1]>1)throw new Error(`Time Fracture overflow: ${JSON.stringify(fractureRender.overflow)}`);
+          await page.screenshot({path:`${out}/02-time-fracture-mobile.png`,fullPage:true});
+
+          const ascent=await page.evaluate(()=>{
+            window.__pulseTempleBloom.clearPreview();
+            window.__pulseTimeFracture.clearPreview();
+            return window.__pulseWorldAscent.preview({envelope:.82,phase:'hold',beatPulse:.55});
+          });
+          await page.waitForTimeout(250);
+          const ascentRender=await page.evaluate(()=>({fov:window.__pulseAscent.camera.fov,roll:window.__pulseAscent.camera.rotation.z,calls:window.__pulseAscent.renderer.info.render.calls,overflow:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight]}));
+          if(!ascent.visible||ascent.frameCount>14||ascent.ascentCount>72||Math.abs(ascent.worldRotation)>Math.PI/2+.04||Math.abs(ascent.cameraRoll)>.06)throw new Error(`World Ascent mobile invalid: ${JSON.stringify(ascent)}`);
+          if(ascentRender.overflow[0]>1||ascentRender.overflow[1]>1)throw new Error(`World Ascent overflow: ${JSON.stringify(ascentRender.overflow)}`);
+          await page.screenshot({path:`${out}/03-world-ascent-mobile.png`,fullPage:true});
+
+          await page.evaluate(()=>{window.__pulseTempleBloom.clearPreview();window.__pulseTimeFracture.clearPreview();window.__pulseWorldAscent.clearPreview();});
+          await page.waitForTimeout(180);
+          const restored=await page.evaluate(()=>({
+            fov:window.__pulseAscent.camera.fov,
+            roll:window.__pulseAscent.camera.rotation.z,
+            temple:window.__pulseTempleBloom.stats(),
+            fracture:window.__pulseTimeFracture.stats(),
+            ascent:window.__pulseWorldAscent.stats()
+          }));
+          if(restored.temple.visible||restored.fracture.visible||restored.ascent.visible)throw new Error(`Preview cleanup failed: ${JSON.stringify(restored)}`);
+          if(Math.abs(restored.fov-baseline.fov)>.35||Math.abs(restored.roll-baseline.roll)>.02)throw new Error(`Camera did not restore: ${JSON.stringify({baseline,restored})}`);
+
+          fs.writeFileSync(`${out}/state.json`,JSON.stringify({baseline,temple,templeRender,fracture,fractureRender,ascent,ascentRender,restored,errors},null,2));
+          await context.close();
+          await browser.close();
+          if(errors.length)throw new Error(errors.join('\n'));
+          console.log(JSON.stringify({baseline,temple,templeRender,fracture,fractureRender,ascent,ascentRender,restored},null,2));
+          NODE
+          node /tmp/pulse-cinematic-mobile.mjs
+      - name: Upload cinematic mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-ascent-cinematic-mobile
+          path: pulse-ascent-cinematic-mobile/
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,163 @@
+name: Pulse Ascent Cinematic Metamorphosis Check
+
+on:
+  push:
+    branches:
+      - 'overnight/**'
+    paths:
+      - 'pulse-ascent/cinematic-metamorphosis-director.js'
+      - 'pulse-ascent/temple-bloom-environment.js'
+      - 'pulse-ascent/time-fracture-perception.js'
+      - 'pulse-ascent/world-ascent-choreography.js'
+      - 'pulse-ascent/index.html'
+      - '.github/workflows/pulse-ascent-cinematic-metamorphosis-check.yml'
+  workflow_dispatch:
+
+jobs:
+  director-state-machine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify runtime registration
+        run: |
+          grep -q 'cinematic-metamorphosis-director.js' pulse-ascent/index.html
+          grep -q "import('./temple-bloom-environment.js')" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "import('./time-fracture-perception.js')" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "import('./world-ascent-choreography.js')" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "index===3" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "index===4" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "TIME_FRACTURE" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "WORLD_ASCENT" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q 'new THREE.InstancedMesh' pulse-ascent/temple-bloom-environment.js
+          grep -q '__pulseTempleBloom' pulse-ascent/temple-bloom-environment.js
+          grep -q '__pulseTimeFracture' pulse-ascent/time-fracture-perception.js
+          grep -q '__pulseWorldAscent' pulse-ascent/world-ascent-choreography.js
+          grep -q 'onFrame' pulse-ascent/cinematic-metamorphosis-director.js
+      - name: Exercise deterministic cue envelopes
+        shell: bash
+        run: |
+          cp pulse-ascent/cinematic-metamorphosis-director.js /tmp/cinematic-metamorphosis-director.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const {CinematicMetamorphosisDirector,METAMORPHOSIS_CUES}=await import('file:///tmp/cinematic-metamorphosis-director.mjs');
+
+          assert.deepEqual(Object.keys(METAMORPHOSIS_CUES),['TEMPLE_BLOOM','TIME_FRACTURE','WORLD_ASCENT']);
+          const director=new CinematicMetamorphosisDirector();
+          let frameSample=null;
+          director.onFrame((sample,dt)=>{frameSample={sample,dt};});
+
+          director.trigger('TEMPLE_BLOOM',{reason:'regression'});
+          assert.equal(director.sample().phase,'attack');
+          assert.equal(director.sample().envelope,0);
+          director.onStep(4);
+          assert.equal(director.sample().phase,'hold');
+          assert.equal(director.sample().openness,1);
+          assert.equal(director.sample().fovOffset,5);
+          director.emitFrame(director.sample(),1/60);
+          assert.equal(frameSample.sample.id,'TEMPLE_BLOOM');
+          assert.equal(frameSample.sample.openness,1);
+          assert.equal(frameSample.dt,1/60);
+          assert.equal(director.snapshot().frameConsumers,1);
+          director.onStep(52);
+          assert.equal(director.sample().phase,'release');
+          director.onStep(64);
+          assert.equal(director.sample().id,null);
+
+          director.trigger('TIME_FRACTURE',{reason:'regression'});
+          director.onStep(68);
+          const fracture=director.sample();
+          assert.equal(fracture.phase,'hold');
+          assert.equal(fracture.timeFeel,.36);
+          assert.equal(fracture.fovOffset,-6);
+          director.onStep(84);
+          assert.equal(director.sample().phase,'release');
+          director.onStep(88);
+          assert.ok(director.sample().timeFeel>.36);
+          assert.ok(director.sample().timeFeel<1);
+          director.onStep(92);
+          assert.equal(director.sample().id,null);
+
+          director.trigger('WORLD_ASCENT',{reason:'regression'});
+          director.onStep(100);
+          const ascent=director.sample();
+          assert.equal(ascent.phase,'hold');
+          assert.equal(ascent.fovOffset,2.5);
+          assert.equal(ascent.roll,.2);
+          assert.equal(ascent.timeFeel,1);
+          director.onStep(132);
+          assert.equal(director.sample().phase,'release');
+          director.onStep(148);
+          assert.equal(director.sample().id,null);
+
+          const stats=director.snapshot();
+          assert.equal(stats.history.length,3);
+          assert.equal(stats.history[0].id,'TEMPLE_BLOOM');
+          assert.equal(stats.history[1].id,'TIME_FRACTURE');
+          assert.equal(stats.history[2].id,'WORLD_ASCENT');
+          console.log(JSON.stringify(stats,null,2));
+          NODE
+      - name: Verify Temple Bloom readability and mobile caps
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const src=fs.readFileSync('pulse-ascent/temple-bloom-environment.js','utf8');
+          assert.match(src,/maxPillars=64/);
+          assert.match(src,/mobile\?24:32/);
+          assert.match(src,/mobile\?36:52/);
+          assert.match(src,/mobile\?48:64/);
+          assert.match(src,/9\.5\+lane\*3\.7/);
+          assert.match(src,/depthWrite:false/);
+          assert.match(src,/sample\?\.id==='TEMPLE_BLOOM'/);
+          assert.match(src,/preview:\(envelope=1,beatPulse=1\)/);
+          console.log('Temple Bloom instancing, cue isolation, side-corridor layout, density tiers and preview diagnostics present.');
+          NODE
+      - name: Verify Time Fracture perception safeguards
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const src=fs.readFileSync('pulse-ascent/time-fracture-perception.js','utf8');
+          assert.match(src,/mobile\?64:96/);
+          assert.match(src,/new THREE\.LineSegments/);
+          assert.match(src,/depthWrite:false/);
+          assert.match(src,/depthTest:false/);
+          assert.match(src,/sample\.id==='TIME_FRACTURE'/);
+          assert.match(src,/makeObservedAdditiveChannel/);
+          assert.match(src,/fovOffset:-6/);
+          assert.match(src,/timeFeel:\.36/);
+          assert.match(src,/preview:/);
+          assert.match(src,/clearPreview:/);
+          assert.match(src,/__pulseTimeFracture/);
+          assert.doesNotMatch(src,/game\.time\s*=/);
+          assert.doesNotMatch(src,/world\.update\s*=/);
+          assert.doesNotMatch(src,/enemy.*velocity/i);
+          console.log('Time Fracture is cue-isolated, peripheral, mobile-bounded and does not mutate authoritative simulation timing.');
+          NODE
+      - name: Verify World Ascent readability and ownership safeguards
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const src=fs.readFileSync('pulse-ascent/world-ascent-choreography.js','utf8');
+          assert.match(src,/mobile\?14:22/);
+          assert.match(src,/mobile\?72:112/);
+          assert.match(src,/sample\.id==='WORLD_ASCENT'/);
+          assert.match(src,/worldRotation=eased\*Math\.PI\*\.5/);
+          assert.match(src,/cameraRoll=eased\*\.055/);
+          assert.match(src,/makeObservedAdditiveChannel/);
+          assert.match(src,/depthWrite:false/);
+          assert.match(src,/preview:/);
+          assert.match(src,/clearPreview:/);
+          assert.match(src,/__pulseWorldAscent/);
+          assert.doesNotMatch(src,/world\.update\s*=/);
+          assert.doesNotMatch(src,/game\.time\s*=/);
+          assert.doesNotMatch(src,/enemy.*velocity/i);
+          console.log('World Ascent keeps the 90-degree reorientation in decorative geometry, limits camera roll to ~3 degrees, caps mobile line density, and leaves simulation ownership untouched.');
+          NODE

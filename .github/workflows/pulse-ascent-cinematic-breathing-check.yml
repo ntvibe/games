@@ -1,0 +1,71 @@
+name: Pulse Ascent Cinematic Breathing Check
+
+on:
+  push:
+    branches:
+      - 'overnight/**'
+    paths:
+      - 'pulse-ascent/cinematic-metamorphosis-director.js'
+      - '.github/workflows/pulse-ascent-cinematic-breathing-check.yml'
+  workflow_dispatch:
+
+jobs:
+  breathing-envelope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify excitation settle release contrast
+        shell: bash
+        run: |
+          cp pulse-ascent/cinematic-metamorphosis-director.js /tmp/cinematic-metamorphosis-director.mjs
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const {CinematicMetamorphosisDirector,METAMORPHOSIS_CUES}=await import('file:///tmp/cinematic-metamorphosis-director.mjs');
+          const near=(actual,expected,epsilon=1e-9)=>assert.ok(Math.abs(actual-expected)<=epsilon,`${actual} != ${expected}`);
+
+          assert.equal(METAMORPHOSIS_CUES.TEMPLE_BLOOM.holdLevel,.72);
+          assert.equal(METAMORPHOSIS_CUES.TIME_FRACTURE.holdLevel,1);
+          assert.equal(METAMORPHOSIS_CUES.WORLD_ASCENT.holdLevel,.82);
+
+          const temple=new CinematicMetamorphosisDirector();
+          temple.trigger('TEMPLE_BLOOM',{reason:'breathing-regression'});
+          temple.onStep(4);
+          near(temple.sample().envelope,1);
+          temple.onStep(8);
+          assert.ok(temple.sample().envelope<1&&temple.sample().envelope>.72);
+          temple.onStep(12);
+          near(temple.sample().envelope,.72);
+          near(temple.sample().openness,.72);
+          temple.onStep(52);
+          near(temple.sample().envelope,.72);
+          temple.onStep(58);
+          assert.ok(temple.sample().envelope<.72&&temple.sample().envelope>0);
+
+          const fracture=new CinematicMetamorphosisDirector();
+          fracture.trigger('TIME_FRACTURE',{reason:'breathing-regression'});
+          fracture.onStep(4);
+          near(fracture.sample().envelope,1);
+          fracture.onStep(12);
+          near(fracture.sample().envelope,1);
+          near(fracture.sample().timeFeel,.36);
+
+          const ascent=new CinematicMetamorphosisDirector();
+          ascent.trigger('WORLD_ASCENT',{reason:'breathing-regression'});
+          ascent.onStep(8);
+          near(ascent.sample().envelope,1);
+          ascent.onStep(14);
+          assert.ok(ascent.sample().envelope<1&&ascent.sample().envelope>.82);
+          ascent.onStep(20);
+          near(ascent.sample().envelope,.82);
+          near(ascent.sample().fovOffset,2.05);
+          near(ascent.sample().roll,.164);
+          ascent.onStep(40);
+          near(ascent.sample().envelope,.82);
+          ascent.onStep(48);
+          assert.ok(ascent.sample().envelope<.82&&ascent.sample().envelope>0);
+
+          console.log('Cinematic cues now peak, settle and release while Time Fracture preserves its full suspended hold.');
+          NODE
