@@ -30,6 +30,7 @@ export class CinematicMetamorphosisDirector{
     this.beatPulse=0;
     this.frameAge=0;
     this.listeners=new Set();
+    this.frameListeners=new Set();
     this.history=[];
   }
 
@@ -109,11 +110,15 @@ export class CinematicMetamorphosisDirector{
     const sample=this.sample();
     return{
       step:this.step,stepsPerBar:this.stepsPerBar,active:this.active?{...this.active}:null,
-      sample,history:this.history.map(item=>({...item}))
+      sample,history:this.history.map(item=>({...item})),frameConsumers:this.frameListeners.size
     };
   }
 
   subscribe(fn){this.listeners.add(fn);return()=>this.listeners.delete(fn);}
+  onFrame(fn){this.frameListeners.add(fn);return()=>this.frameListeners.delete(fn);}
+  emitFrame(sample,dt){
+    for(const fn of this.frameListeners){try{fn(sample,dt);}catch(error){console.warn('metamorphosis frame consumer failed',error);}}
+  }
   emit(type,payload=this.snapshot()){
     for(const fn of this.listeners){try{fn(type,payload);}catch(error){console.warn('metamorphosis listener failed',error);}}
   }
@@ -141,7 +146,8 @@ if(typeof window!=='undefined')waitForGame().then(game=>{
   const baseWorldUpdate=game.world?.update?.bind(game.world);
   if(baseWorldUpdate)game.world.update=(dt,t,energy,sync=0)=>{
     const result=baseWorldUpdate(dt,t,energy,sync);
-    director.update(dt);
+    const sample=director.update(dt);
+    director.emitFrame(sample,dt);
     return result;
   };
 
@@ -150,7 +156,8 @@ if(typeof window!=='undefined')waitForGame().then(game=>{
     cues:METAMORPHOSIS_CUES,
     trigger:(id,options={})=>director.trigger(id,options),
     stats:()=>director.snapshot(),
-    sample:()=>director.sample()
+    sample:()=>director.sample(),
+    onFrame:fn=>director.onFrame(fn)
   };
   window.__pulseMetamorphosisDirector=api;
 });
