@@ -7,6 +7,7 @@ on:
     paths:
       - 'pulse-ascent/cinematic-metamorphosis-director.js'
       - 'pulse-ascent/temple-bloom-environment.js'
+      - 'pulse-ascent/time-fracture-perception.js'
       - 'pulse-ascent/index.html'
       - '.github/workflows/pulse-ascent-cinematic-metamorphosis-check.yml'
   workflow_dispatch:
@@ -23,8 +24,12 @@ jobs:
         run: |
           grep -q 'cinematic-metamorphosis-director.js' pulse-ascent/index.html
           grep -q "import('./temple-bloom-environment.js')" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "import('./time-fracture-perception.js')" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "index===3" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "TIME_FRACTURE" pulse-ascent/cinematic-metamorphosis-director.js
           grep -q 'new THREE.InstancedMesh' pulse-ascent/temple-bloom-environment.js
           grep -q '__pulseTempleBloom' pulse-ascent/temple-bloom-environment.js
+          grep -q '__pulseTimeFracture' pulse-ascent/time-fracture-perception.js
           grep -q 'onFrame' pulse-ascent/cinematic-metamorphosis-director.js
       - name: Exercise deterministic cue envelopes
         shell: bash
@@ -62,6 +67,13 @@ jobs:
           assert.equal(fracture.phase,'hold');
           assert.equal(fracture.timeFeel,.36);
           assert.equal(fracture.fovOffset,-6);
+          director.onStep(84);
+          assert.equal(director.sample().phase,'release');
+          director.onStep(88);
+          assert.ok(director.sample().timeFeel>.36);
+          assert.ok(director.sample().timeFeel<1);
+          director.onStep(92);
+          assert.equal(director.sample().id,null);
 
           const stats=director.snapshot();
           assert.equal(stats.history.length,2);
@@ -85,4 +97,27 @@ jobs:
           assert.match(src,/sample\?\.id==='TEMPLE_BLOOM'/);
           assert.match(src,/preview:\(envelope=1,beatPulse=1\)/);
           console.log('Temple Bloom instancing, cue isolation, side-corridor layout, density tiers and preview diagnostics present.');
+          NODE
+      - name: Verify Time Fracture perception safeguards
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const src=fs.readFileSync('pulse-ascent/time-fracture-perception.js','utf8');
+          assert.match(src,/mobile\?64:96/);
+          assert.match(src,/new THREE\.LineSegments/);
+          assert.match(src,/depthWrite:false/);
+          assert.match(src,/depthTest:false/);
+          assert.match(src,/sample\.id==='TIME_FRACTURE'/);
+          assert.match(src,/makeObservedAdditiveChannel/);
+          assert.match(src,/fovOffset:-6/);
+          assert.match(src,/timeFeel:\.36/);
+          assert.match(src,/preview:/);
+          assert.match(src,/clearPreview:/);
+          assert.match(src,/__pulseTimeFracture/);
+          assert.doesNotMatch(src,/game\.time\s*=/);
+          assert.doesNotMatch(src,/world\.update\s*=/);
+          assert.doesNotMatch(src,/enemy.*velocity/i);
+          console.log('Time Fracture is cue-isolated, peripheral, mobile-bounded and does not mutate authoritative simulation timing.');
           NODE
