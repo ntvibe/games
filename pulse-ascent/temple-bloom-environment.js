@@ -82,7 +82,8 @@ export class TempleBloomEnvironment{
   densityTarget(){
     if(Number.isFinite(this.densityOverride))return clamp(Math.round(this.densityOverride),8,this.maxPillars);
     const settings=window.__pulseSettings?.state;
-    const mobile=innerWidth<760||matchMedia?.('(pointer: coarse)').matches;
+    const coarse=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches;
+    const mobile=innerWidth<760||coarse;
     if(settings?.graphics==='battery')return mobile?24:32;
     if(settings?.graphics==='quality')return mobile?48:64;
     return mobile?36:52;
@@ -96,8 +97,9 @@ export class TempleBloomEnvironment{
   }
 
   update(sample,dt=1/60){
-    const envelope=clamp(this.previewEnvelope??sample?.openness??0,0,1);
-    const beatPulse=clamp(this.previewBeat??sample?.beatPulse??0,0,1);
+    const cueActive=sample?.id==='TEMPLE_BLOOM';
+    const envelope=clamp(this.previewEnvelope??(cueActive?sample?.openness:0)??0,0,1);
+    const beatPulse=clamp(this.previewBeat??(cueActive?sample?.beatPulse:0)??0,0,1);
     this.lastEnvelope=envelope;
     this.lastBeatPulse=beatPulse;
     const active=envelope>.006;
@@ -115,7 +117,7 @@ export class TempleBloomEnvironment{
       const outward=(1-local)*2.8;
       this._dummy.position.set(p.x+Math.sign(p.x)*outward,p.y-(1-local)*3.2,p.z);
       this._dummy.rotation.set(p.lean*Math.sin(drift+i*.21),p.lean*.5,beatPulse*.015*Math.sign(p.x));
-      this._dummy.scale.set(p.width*mix(.45,1,local),h, p.width*mix(.55,1.35,local));
+      this._dummy.scale.set(p.width*mix(.45,1,local),h,p.width*mix(.55,1.35,local));
       this._dummy.updateMatrix();
       this.pillars.setMatrixAt(i,this._dummy.matrix);
     }
@@ -151,7 +153,7 @@ export class TempleBloomEnvironment{
   preview(envelope=1,beatPulse=1){
     this.previewEnvelope=clamp(envelope,0,1);
     this.previewBeat=clamp(beatPulse,0,1);
-    this.update({openness:this.previewEnvelope,beatPulse:this.previewBeat},0);
+    this.update({id:'TEMPLE_BLOOM',openness:this.previewEnvelope,beatPulse:this.previewBeat},0);
     return this.stats();
   }
 
