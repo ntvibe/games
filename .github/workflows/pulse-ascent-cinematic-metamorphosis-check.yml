@@ -8,6 +8,7 @@ on:
       - 'pulse-ascent/cinematic-metamorphosis-director.js'
       - 'pulse-ascent/temple-bloom-environment.js'
       - 'pulse-ascent/time-fracture-perception.js'
+      - 'pulse-ascent/world-ascent-choreography.js'
       - 'pulse-ascent/index.html'
       - '.github/workflows/pulse-ascent-cinematic-metamorphosis-check.yml'
   workflow_dispatch:
@@ -25,11 +26,15 @@ jobs:
           grep -q 'cinematic-metamorphosis-director.js' pulse-ascent/index.html
           grep -q "import('./temple-bloom-environment.js')" pulse-ascent/cinematic-metamorphosis-director.js
           grep -q "import('./time-fracture-perception.js')" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "import('./world-ascent-choreography.js')" pulse-ascent/cinematic-metamorphosis-director.js
           grep -q "index===3" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "index===4" pulse-ascent/cinematic-metamorphosis-director.js
           grep -q "TIME_FRACTURE" pulse-ascent/cinematic-metamorphosis-director.js
+          grep -q "WORLD_ASCENT" pulse-ascent/cinematic-metamorphosis-director.js
           grep -q 'new THREE.InstancedMesh' pulse-ascent/temple-bloom-environment.js
           grep -q '__pulseTempleBloom' pulse-ascent/temple-bloom-environment.js
           grep -q '__pulseTimeFracture' pulse-ascent/time-fracture-perception.js
+          grep -q '__pulseWorldAscent' pulse-ascent/world-ascent-choreography.js
           grep -q 'onFrame' pulse-ascent/cinematic-metamorphosis-director.js
       - name: Exercise deterministic cue envelopes
         shell: bash
@@ -75,10 +80,23 @@ jobs:
           director.onStep(92);
           assert.equal(director.sample().id,null);
 
+          director.trigger('WORLD_ASCENT',{reason:'regression'});
+          director.onStep(100);
+          const ascent=director.sample();
+          assert.equal(ascent.phase,'hold');
+          assert.equal(ascent.fovOffset,2.5);
+          assert.equal(ascent.roll,.2);
+          assert.equal(ascent.timeFeel,1);
+          director.onStep(132);
+          assert.equal(director.sample().phase,'release');
+          director.onStep(148);
+          assert.equal(director.sample().id,null);
+
           const stats=director.snapshot();
-          assert.equal(stats.history.length,2);
+          assert.equal(stats.history.length,3);
           assert.equal(stats.history[0].id,'TEMPLE_BLOOM');
           assert.equal(stats.history[1].id,'TIME_FRACTURE');
+          assert.equal(stats.history[2].id,'WORLD_ASCENT');
           console.log(JSON.stringify(stats,null,2));
           NODE
       - name: Verify Temple Bloom readability and mobile caps
@@ -120,4 +138,26 @@ jobs:
           assert.doesNotMatch(src,/world\.update\s*=/);
           assert.doesNotMatch(src,/enemy.*velocity/i);
           console.log('Time Fracture is cue-isolated, peripheral, mobile-bounded and does not mutate authoritative simulation timing.');
+          NODE
+      - name: Verify World Ascent readability and ownership safeguards
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const src=fs.readFileSync('pulse-ascent/world-ascent-choreography.js','utf8');
+          assert.match(src,/mobile\?14:22/);
+          assert.match(src,/mobile\?72:112/);
+          assert.match(src,/sample\.id==='WORLD_ASCENT'/);
+          assert.match(src,/worldRotation=eased\*Math\.PI\*\.5/);
+          assert.match(src,/cameraRoll=eased\*\.055/);
+          assert.match(src,/makeObservedAdditiveChannel/);
+          assert.match(src,/depthWrite:false/);
+          assert.match(src,/preview:/);
+          assert.match(src,/clearPreview:/);
+          assert.match(src,/__pulseWorldAscent/);
+          assert.doesNotMatch(src,/world\.update\s*=/);
+          assert.doesNotMatch(src,/game\.time\s*=/);
+          assert.doesNotMatch(src,/enemy.*velocity/i);
+          console.log('World Ascent keeps the 90-degree reorientation in decorative geometry, limits camera roll to ~3 degrees, caps mobile line density, and leaves simulation ownership untouched.');
           NODE
