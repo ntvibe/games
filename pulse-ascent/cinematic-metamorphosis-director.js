@@ -141,6 +141,7 @@ if(typeof window!=='undefined')waitForGame().then(game=>{
     const result=baseSetSection(index,name);
     if(index===2&&director.sample().id!=='TEMPLE_BLOOM')director.trigger('TEMPLE_BLOOM',{reason:'sector-vector-temple'});
     if(index===3&&director.sample().id!=='TIME_FRACTURE')director.trigger('TIME_FRACTURE',{reason:'sector-free-vector-rupture'});
+    if(index===4&&director.sample().id!=='WORLD_ASCENT')director.trigger('WORLD_ASCENT',{reason:'sector-ascension-reentry'});
     return result;
   };
 
@@ -163,4 +164,5 @@ if(typeof window!=='undefined')waitForGame().then(game=>{
   window.__pulseMetamorphosisDirector=api;
   import('./temple-bloom-environment.js').catch(error=>console.warn('Temple Bloom environment failed to load',error));
   import('./time-fracture-perception.js').catch(error=>console.warn('Time Fracture perception failed to load',error));
+  import('./world-ascent-choreography.js').catch(error=>console.warn('World Ascent choreography failed to load',error));
 });
