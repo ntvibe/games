@@ -34,7 +34,11 @@ waitForRuntime().then(({game,directorApi})=>{
   game.__timeFracturePerceptionInstalled=true;
 
   const mobile=innerWidth<750||innerHeight<520;
-  const streakCount=mobile?64:96;
+  const graphics=window.__pulseSettings?.state?.graphics||'auto';
+  const qualityTier=graphics==='battery'?'battery':graphics==='quality'?'quality':'auto';
+  const streakCount=mobile
+    ? (qualityTier==='battery'?40:qualityTier==='quality'?64:52)
+    : (qualityTier==='battery'?64:qualityTier==='quality'?96:80);
   const positions=new Float32Array(streakCount*2*3);
   const seeds=[];
   for(let i=0;i<streakCount;i++){
@@ -66,7 +70,7 @@ waitForRuntime().then(({game,directorApi})=>{
   let previewOverride=null;
   let lastSequence=-1;
   let lastPhase='idle';
-  let state={active:false,phase:'idle',envelope:0,timeFeel:1,snap:0,streakCount,preview:false};
+  let state={active:false,phase:'idle',envelope:0,timeFeel:1,snap:0,streakCount,qualityTier,preview:false};
 
   const fovChannel=makeObservedAdditiveChannel(
     ()=>game.camera.fov,
@@ -156,7 +160,7 @@ waitForRuntime().then(({game,directorApi})=>{
 
     state={
       active,phase:active?sample.phase:'idle',envelope:env,
-      timeFeel:active?(sample.timeFeel??1):1,snap,streakCount,
+      timeFeel:active?(sample.timeFeel??1):1,snap,streakCount,qualityTier,
       preview:!!previewOverride,visible:streaks.visible,
       fovApplied:fov.applied,bloomApplied:bloom.applied,exposureApplied:exposure.applied
     };
