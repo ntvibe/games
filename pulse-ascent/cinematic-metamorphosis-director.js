@@ -160,4 +160,5 @@ if(typeof window!=='undefined')waitForGame().then(game=>{
     onFrame:fn=>director.onFrame(fn)
   };
   window.__pulseMetamorphosisDirector=api;
+  import('./temple-bloom-environment.js').catch(error=>console.warn('Temple Bloom environment failed to load',error));
 });
