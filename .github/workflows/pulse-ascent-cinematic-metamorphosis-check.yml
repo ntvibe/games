@@ -82,6 +82,7 @@ jobs:
           assert.match(src,/mobile\?48:64/);
           assert.match(src,/9\.5\+lane\*3\.7/);
           assert.match(src,/depthWrite:false/);
+          assert.match(src,/sample\?\.id==='TEMPLE_BLOOM'/);
           assert.match(src,/preview:\(envelope=1,beatPulse=1\)/);
-          console.log('Temple Bloom instancing, side-corridor layout, density tiers and preview diagnostics present.');
+          console.log('Temple Bloom instancing, cue isolation, side-corridor layout, density tiers and preview diagnostics present.');
           NODE
