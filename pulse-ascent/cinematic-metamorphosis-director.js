@@ -1,17 +1,18 @@
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const mix=(a,b,t)=>a+(b-a)*t;
 const smoothstep=t=>{const x=clamp(t,0,1);return x*x*(3-2*x);};
 
 export const METAMORPHOSIS_CUES=Object.freeze({
   TEMPLE_BLOOM:Object.freeze({
-    id:'TEMPLE_BLOOM',attackSteps:4,holdSteps:48,releaseSteps:12,
+    id:'TEMPLE_BLOOM',attackSteps:4,holdSteps:48,releaseSteps:12,settleSteps:8,holdLevel:.72,
     intent:Object.freeze({openness:1,fovOffset:5,bloomBoost:.18,roll:0,timeFeel:1,streakBoost:.08})
   }),
   TIME_FRACTURE:Object.freeze({
-    id:'TIME_FRACTURE',attackSteps:4,holdSteps:16,releaseSteps:8,
+    id:'TIME_FRACTURE',attackSteps:4,holdSteps:16,releaseSteps:8,settleSteps:0,holdLevel:1,
     intent:Object.freeze({openness:.18,fovOffset:-6,bloomBoost:.12,roll:0,timeFeel:.36,streakBoost:.16})
   }),
   WORLD_ASCENT:Object.freeze({
-    id:'WORLD_ASCENT',attackSteps:8,holdSteps:32,releaseSteps:16,
+    id:'WORLD_ASCENT',attackSteps:8,holdSteps:32,releaseSteps:16,settleSteps:12,holdLevel:.82,
     intent:Object.freeze({openness:.72,fovOffset:2.5,bloomBoost:.1,roll:.2,timeFeel:1,streakBoost:.12})
   })
 });
@@ -84,10 +85,17 @@ export class CinematicMetamorphosisDirector{
   envelope(){
     const a=this.active;
     if(!a)return 0;
+    const spec=METAMORPHOSIS_CUES[a.id];
+    const holdLevel=clamp(spec.holdLevel??1,0,1);
     if(a.elapsedSteps<a.attackSteps)return smoothstep(a.elapsedSteps/a.attackSteps);
-    if(a.elapsedSteps<a.attackSteps+a.holdSteps)return 1;
+    if(a.elapsedSteps<a.attackSteps+a.holdSteps){
+      const holdAge=a.elapsedSteps-a.attackSteps;
+      if((spec.settleSteps??0)<=0)return holdLevel;
+      const settle=smoothstep(holdAge/spec.settleSteps);
+      return mix(1,holdLevel,settle);
+    }
     const releaseAge=a.elapsedSteps-a.attackSteps-a.holdSteps;
-    return 1-smoothstep(releaseAge/a.releaseSteps);
+    return holdLevel*(1-smoothstep(releaseAge/a.releaseSteps));
   }
 
   sample(){
