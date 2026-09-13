@@ -4,6 +4,19 @@ A collection of browser games. Each game lives in its own top-level folder so it
 
 ## Current games
 
+### `park-pals/` — Park Pals
+
+A cozy mobile-friendly playground adventure with:
+
+- a freshly randomized buddy each park day (name, skin tone, hair and clothes)
+- free top-down exploration around a colorful park
+- six interactive activities: swings, slide, sandbox, seesaw, football and pond ducks
+- a lightweight goal of making five happy memories to complete the day
+- desktop keyboard controls and mobile thumb-stick controls
+- procedural Canvas 2D characters and scenery
+- optional synthesized WebAudio feedback
+- zero runtime dependencies and no build step
+
 ### `pulse-ascent/` — PULSE//ASCENT
 
 An original mobile-first synesthetic rail shooter with:
@@ -65,6 +78,11 @@ A high-end mobile-first 3D aerial combat demo with:
 games/
 ├── index.html
 ├── README.md
+├── park-pals/
+│   ├── index.html
+│   ├── style.css
+│   ├── game.js
+│   └── README.md
 ├── pulse-ascent/
 │   ├── index.html
 │   ├── style.css
