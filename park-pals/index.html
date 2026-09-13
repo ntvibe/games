@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#8ccf73" />
+  <title>Park Pals</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" aria-label="Park Pals game canvas"></canvas>
+
+    <section id="hud" aria-live="polite">
+      <div class="pill friend"><span id="avatarDot"></span><span id="friendName">Friend</span></div>
+      <div class="pill memories">★ <span id="memoryCount">0</span>/<span id="memoryGoal">5</span></div>
+      <button id="soundBtn" class="icon-btn" aria-label="Toggle sound">♪</button>
+    </section>
+
+    <div id="prompt" class="prompt hidden">Press E to play</div>
+    <button id="actionBtn" class="action-btn hidden">PLAY</button>
+
+    <section id="touchControls" aria-label="Touch controls">
+      <div id="joystick" class="joystick"><div id="stick" class="stick"></div></div>
+    </section>
+
+    <section id="startCard" class="overlay visible">
+      <div class="card">
+        <div class="eyebrow">A tiny park adventure</div>
+        <h1>PARK PALS</h1>
+        <canvas id="portrait" width="180" height="180"></canvas>
+        <p id="introText">Meet your new park buddy.</p>
+        <div class="button-row">
+          <button id="rerollBtn" class="secondary">New buddy</button>
+          <button id="startBtn" class="primary">Play</button>
+        </div>
+        <small>Move with WASD / arrows or the thumb stick. Use E / Space or PLAY near playground objects.</small>
+      </div>
+    </section>
+
+    <section id="finishCard" class="overlay">
+      <div class="card finish">
+        <div class="big-star">★</div>
+        <div class="eyebrow">Park day complete</div>
+        <h2 id="finishTitle">Best day ever!</h2>
+        <p id="finishText"></p>
+        <div class="button-row">
+          <button id="keepPlayingBtn" class="secondary">Keep playing</button>
+          <button id="newDayBtn" class="primary">New park day</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="./game.js"></script>
+</body>
+</html>
